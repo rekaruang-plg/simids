@@ -1,0 +1,12 @@
+illage==='all')rows.push(excelRowData(aggregateTarget(state.targets),0,month,true));
+  const csv='\ufeff'+[h1,h2,h3,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');download(csv,`SiMIDS_Format_Excel_${village}_${state.settings.year}_${String(month).padStart(2,'0')}.csv`,'text/csv;charset=utf-8')
+}
+function download(data,name,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
+document.getElementById('exportReportBtn').onclick=exportCsv;document.getElementById('downloadBackupBtn').onclick=()=>download(JSON.stringify(state,null,2),`SiMIDS_Backup_${today()}.json`,'application/json');document.getElementById('importBackupInput').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.settings||!Array.isArray(x.children)||!Array.isArray(x.events))throw 0;state=x;state.targets=normalizeTargets(state.targets||[]);save('import_backup');toast('Backup berhasil diimpor')}catch{alert('File backup tidak sesuai')}};r.readAsText(f)});document.getElementById('resetDemoBtn').onclick=()=>{if(confirm('Reset seluruh data ke contoh awal?')){state=freshState();save('reset_demo');toast('Data demo dipulihkan')}};
+const month=document.getElementById('reportMonthFilter');month.innerHTML=Array.from({length:12},(_,i)=>`<option value="${i+1}">${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][i]}</option>`).join('');month.value=new Date().getMonth()+1;document.getElementById('eventDate').value=today();document.getElementById('eduDate').value=today();document.getElementById('assessmentDate').value=today();document.getElementById('followupDate').value=today();
+renderAll();
+initSearchableSelects();
+bindPickerEvents();
+syncImmunizationPickerLabels();
+renderImmunizationReview();
+maybeShowDailyReminder();
