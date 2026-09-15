@@ -1,0 +1,14 @@
+{
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/loader.js",
+      "headers": [{"key": "Cache-Control", "value": "no-store"}]
+    },
+    {
+      "source": "/chunks/(.*)",
+      "headers": [{"key": "Cache-Control", "value": "no-store"}]
+    }
+  ]
+}
