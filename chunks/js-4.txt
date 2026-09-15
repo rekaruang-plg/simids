@@ -1,0 +1,63 @@
+esc(c.hamlet)}</small><span class="due-text ${r.status==='due'?'warn':''}">${esc(r.label)}${r.due?' • '+fmtDate(r.due):''}</span></div>${wa?`<a class="mini-btn wa-btn" href="${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>`:'<span class="tag neutral">No. WA kosong</span>'}</div>`}).join('')+(items.length>5?`<div class="empty">+ ${items.length-5} anak lainnya. Tekan “Lihat semua pengingat”.</div>`:'')}
+function openReminderCenter(manual=false){renderReminderCenter();document.getElementById('reminderModal').classList.add('open');document.getElementById('reminderModal').setAttribute('aria-hidden','false');if(!manual)localStorage.setItem(REMINDER_SEEN_KEY,today())}
+function closeReminderCenter(markSeen=true){document.getElementById('reminderModal').classList.remove('open');document.getElementById('reminderModal').setAttribute('aria-hidden','true');if(markSeen)localStorage.setItem(REMINDER_SEEN_KEY,today())}
+function maybeShowDailyReminder(){if(!reminderItems().length)return;if(localStorage.getItem(REMINDER_SEEN_KEY)===today())return;setTimeout(()=>openReminderCenter(false),650)}
+document.getElementById('openReminderBtn').onclick=()=>openReminderCenter(true);
+document.getElementById('closeReminderModal').onclick=()=>closeReminderCenter(true);
+document.getElementById('reminderLaterBtn').onclick=()=>closeReminderCenter(true);
+document.getElementById('reminderSeeAllBtn').onclick=()=>{closeReminderCenter(true);showPage('followup')};
+document.body.addEventListener('click',e=>{if(e.target.closest('#homeOpenReminder'))openReminderCenter(true)});
+document.getElementById('reminderModal').addEventListener('click',e=>{if(e.target.id==='reminderModal')closeReminderCenter(true)});
+
+// Pemilih yang mudah dicari dan alur input imunisasi ramah kader
+let vaccinePickerFilter='missing';
+let genericSelectTarget=null;
+const SEARCHABLE_SELECT_IDS=['childVillage','childVillageFilter','riskVillageFilter','eduVillage','assessmentVillage','reportVillageFilter','settingFocusVillage'];
+function foldText(v=''){return String(v).toLocaleLowerCase('id-ID').normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function fullDate(v){if(!v)return '-';return new Date(v+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+function latestEventTime(childId){const e=[...childEvents(childId)].sort((a,b)=>b.date.localeCompare(a.date))[0];return e?.date||''}
+function pickerOpen(id){const el=document.getElementById(id);if(!el)return;el.classList.add('open');el.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
+function pickerClose(id){const el=document.getElementById(id);if(!el)return;el.classList.remove('open');el.setAttribute('aria-hidden','true');if(!document.querySelector('.modal.open'))document.body.style.overflow=''}
+function syncImmunizationPickerLabels(){
+  const childId=document.getElementById('eventChild')?.value||'',vaccineId=document.getElementById('eventVaccine')?.value||'';
+  const c=state.children.find(x=>x.id===childId),v=VACCINES.find(x=>x.id===vaccineId);
+  const childBtn=document.getElementById('openChildPicker'),vaccineBtn=document.getElementById('openVaccinePicker');
+  if(childBtn){childBtn.classList.toggle('selected',!!c);document.getElementById('eventChildLabel').textContent=c?c.name:'Pilih anak';document.getElementById('eventChildSub').textContent=c?`${c.parentName||'Orang tua'} • ${c.hamlet||c.village}`:'Tekan di sini untuk mencari'}
+  if(vaccineBtn){vaccineBtn.disabled=!c;vaccineBtn.classList.toggle('selected',!!v);document.getElementById('eventVaccineLabel').textContent=v?v.label:'Pilih imunisasi';document.getElementById('eventVaccineSub').textContent=!c?'Pilih anak terlebih dahulu':v?'Tekan jika ingin mengganti':'Tekan untuk memilih dari daftar'}
+}
+function renderImmunizationReview(){
+  const box=document.getElementById('immunizationReview'),btn=document.getElementById('saveImmunizationBtn');if(!box||!btn)return;
+  const c=state.children.find(x=>x.id===document.getElementById('eventChild').value),v=VACCINES.find(x=>x.id===document.getElementById('eventVaccine').value),date=document.getElementById('eventDate').value;
+  const ready=!!(c&&v&&date);btn.disabled=!ready;
+  if(!ready){box.innerHTML='<div class="review-empty"><span>✓</span><div><b>Periksa sebelum simpan</b><small>Pilih anak dan imunisasi. Ringkasannya akan muncul di sini.</small></div></div>';return}
+  box.innerHTML=`<div class="review-ready"><div class="review-title">✓ Periksa sekali lagi</div><div class="review-grid"><div class="review-item"><span>Anak</span><b>${esc(c.name)}</b></div><div class="review-item"><span>Imunisasi</span><b>${esc(v.label)}</b></div><div class="review-item"><span>Orang tua</span><b>${esc(c.parentName||'-')}</b></div><div class="review-item"><span>Tanggal</span><b>${esc(fullDate(date))}</b></div></div></div>`;
+}
+function openChildPicker(){
+  const input=document.getElementById('childPickerSearch');if(input)input.value='';renderChildPickerResults('');pickerOpen('childPickerModal');setTimeout(()=>input?.focus(),120)
+}
+function renderChildPickerResults(query=''){
+  const q=foldText(query.trim()),out=document.getElementById('childPickerResults');if(!out)return;
+  let kids=[...state.children].filter(c=>!q||foldText([c.name,c.parentName,c.hamlet,c.posyandu,c.village].join(' ')).includes(q));
+  kids.sort((a,b)=>{const af=a.village===state.settings.focusVillage?0:1,bf=b.village===state.settings.focusVillage?0:1;if(af!==bf)return af-bf;const ae=latestEventTime(a.id),be=latestEventTime(b.id);if(!q&&ae!==be)return be.localeCompare(ae);return a.name.localeCompare(b.name,'id')});
+  if(!kids.length){out.innerHTML='<div class="picker-empty"><b>Nama belum ditemukan</b>Coba ketik nama ibu, dusun, atau tekan “Tambah data anak”.</div>';return}
+  out.innerHTML=kids.map(c=>{const ev=childEvents(c.id).sort((a,b)=>b.date.localeCompare(a.date))[0],sel=document.getElementById('eventChild').value===c.id;return `<button class="picker-option ${sel?'selected':''}" type="button" data-pick-child="${c.id}"><span class="option-icon">${esc(c.name.trim().charAt(0).toUpperCase()||'👶')}</span><span class="option-main"><b>${esc(c.name)}</b><small>${esc(c.parentName||'Orang tua belum diisi')} • ${esc(c.hamlet||'-')} • ${esc(c.posyandu||c.village)}</small>${ev?`<small>Terakhir: ${esc(getVaccine(ev.vaccineId).label)} • ${fmtDate(ev.date)}</small>`:''}</span>${sel?'<span class="option-state">Dipilih</span>':''}</button>`}).join('')
+}
+function chooseChild(id){const el=document.getElementById('eventChild');el.value=id;el.dispatchEvent(new Event('change',{bubbles:true}));pickerClose('childPickerModal');document.getElementById('immunizationSuccess').hidden=true;setTimeout(()=>document.getElementById('openVaccinePicker')?.focus(),80)}
+function openVaccinePicker(){const childId=document.getElementById('eventChild').value;if(!childId){openChildPicker();return}vaccinePickerFilter='missing';document.querySelectorAll('[data-vaccine-filter]').forEach(b=>b.classList.toggle('active',b.dataset.vaccineFilter==='missing'));const input=document.getElementById('vaccinePickerSearch');if(input)input.value='';renderVaccinePickerResults('');pickerOpen('vaccinePickerModal');setTimeout(()=>input?.focus(),120)}
+function renderVaccinePickerResults(query=''){
+  const childId=document.getElementById('eventChild').value,q=foldText(query.trim()),out=document.getElementById('vaccinePickerResults');if(!out)return;
+  const counts={};const latest={};childEvents(childId).forEach(e=>{counts[e.vaccineId]=(counts[e.vaccineId]||0)+1;if(!latest[e.vaccineId]||e.date>latest[e.vaccineId])latest[e.vaccineId]=e.date});
+  let items=VACCINES.filter(v=>!v.computed).filter(v=>!q||foldText(`${v.id} ${v.label}`).includes(q));
+  if(vaccinePickerFilter==='missing'&&!q){const missing=items.filter(v=>!counts[v.id]);if(missing.length)items=missing}
+  if(!items.length){out.innerHTML='<div class="picker-empty"><b>Tidak ditemukan</b>Coba kata lain atau pilih “Semua imunisasi”.</div>';return}
+  const selected=document.getElementById('eventVaccine').value;
+  out.innerHTML=items.map(v=>{const done=counts[v.id]||0;return `<button type="button" class="picker-option ${done?'done':''} ${selected===v.id?'selected':''}" data-pick-vaccine="${v.id}"><span class="option-icon">${done?'✓':esc(v.id.replaceAll('_','-').replace('DPT-HB-HIB','DPT').slice(0,5))}</span><span class="option-main"><b>${esc(v.label)}</b><small>${done?`Sudah tercatat ${done}x${latest[v.id]?' • terakhir '+fmtDate(latest[v.id]):''}`:'Belum tercatat untuk anak ini'}</small></span><span class="option-state">${selected===v.id?'Dipilih':done?'Sudah ada':'Pilih'}</span></button>`}).join('')
+}
+function chooseVaccine(id){const el=document.getElementById('eventVaccine');el.value=id;el.dispatchEvent(new Event('change',{bubbles:true}));pickerClose('vaccinePickerModal');setTimeout(()=>document.getElementById('eventDate')?.focus(),80)}
+function showImmunizationSuccess(child,vaccine,date){const box=document.getElementById('immunizationSuccess');if(!box)return;box.hidden=false;box.innerHTML=`<div class="success-wrap"><span class="success-icon">✓</span><div><b>Data berhasil disimpan</b><p>${esc(child?.name||'-')} • ${esc(vaccine?.label||'-')} • ${esc(fullDate(date))}</p><div class="success-actions"><button class="btn primary" type="button" id="nextChildBtn">Catat anak berikutnya</button><button class="btn secondary" type="button" id="closeSuccessBtn">Selesai</button></div></div></div>`;box.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>{document.getElementById('nextChildBtn')?.addEventListener('click',()=>{box.hidden=true;openChildPicker()});document.getElementById('closeSuccessBtn')?.addEventListener('click',()=>{box.hidden=true;showPage('home')})},0)}
+function searchableLabel(select){return select?.options[select.selectedIndex]?.text||'Pilih'}
+function initSearchableSelects(){SEARCHABLE_SELECT_IDS.forEach(id=>{const select=document.getElementById(id);if(!select||select.dataset.searchEnhanced)return;select.dataset.searchEnhanced='1';select.classList.add('searchable-select-native');const shell=document.createElement('div');shell.className='searchable-select-shell';select.parentNode.insertBefore(shell,select);shell.appendChild(select);const btn=document.createElement('button');btn.type='button';btn.className='searchable-select-button';btn.dataset.selectTarget=id;btn.innerHTML='<span></span>';shell.appendChild(btn);btn.addEventListener('click',()=>openGenericSelect(id));select.addEventListener('change',()=>refreshSearchableButtons())});refreshSearchableButtons()}
+function refreshSearchableButtons(){SEARCHABLE_SELECT_IDS.forEach(id=>{const select=document.getElementById(id),btn=document.querySelector(`[data-select-target="${id}"]`);if(select&&btn){const span=btn.querySelector('span');if(span)span.textContent=searchableLabel(select)}})}
+function genericSelectTitle(id){return ({childVillage:'Pilih desa anak',childVillageFilter:'Filter desa',riskVillageFilter:'Filter desa',eduVillage:'Pilih desa kegiatan',assessmentVillage:'Pilih desa peserta',reportVillageFilter:'Pilih desa laporan',settingFocusVillage:'Pilih desa fokus'})[id]||'Pilih data'}
+function openGenericSelect(id){const select=document.getElementById(id);if(!select)return;genericSelectTarget=id;document.getElementById('genericSelectTitle').textContent=genericSelectTitle(id);const input=document.getElementById('genericSelectSearch');input.value='';renderGenericSelectResults('');pickerOpen('genericSelectModal');setTimeout(()=>input.focus(),120)}
+function renderGenericSelectResults(query=''){const select=document.getElementById(genericSelectTarget),out=document.getElementById('genericSelectResults');if(!select||!out)return;const q=foldText(query),opts=[...select.options].filter(o=>!q||foldText(o.text).includes(q));out.innerHTML=opts.length?opts.map(o=>`<button type="button" class="picker-option ${o.value===select.value?'selected':''}" data-generic-option="${esc(o.value)}"><span class="option-icon">⌖</span><span class="option
