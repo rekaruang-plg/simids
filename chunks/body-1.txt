@@ -1,0 +1,169 @@
+
+  <header class="app-header">
+    <div class="brand-wrap">
+      <div class="brand-mark" aria-hidden="true">S</div>
+      <div class="brand-copy">
+        <strong>SiMIDS</strong>
+        <small>Posyandu • Tanjung Lago</small>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="notification-button" id="openReminderBtn" type="button" aria-label="Buka pengingat">
+        <span aria-hidden="true">🔔</span><span class="notification-text">Pengingat</span><span class="notification-count" id="headerReminderCount">0</span>
+      </button>
+      <span id="connectionBadge" class="status-badge good">● Data tersimpan</span>
+      <label class="role-control"><span>Tampilan</span>
+        <select id="roleSelect" aria-label="Pilih tampilan peran">
+          <option value="kader">Kader</option>
+          <option value="bidan">Bidan</option>
+          <option value="puskesmas">Puskesmas/Admin</option>
+        </select>
+      </label>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="side-nav" id="sideNav">
+      <div class="side-intro">
+        <span class="side-avatar">K</span>
+        <div><small>Masuk sebagai</small><b id="sideRoleText">Kader Posyandu</b></div>
+      </div>
+      <nav class="side-menu" aria-label="Navigasi utama">
+        <button class="nav-btn active" data-page="home"><span>⌂</span><b>Beranda</b></button>
+        <button class="nav-btn" data-page="children"><span>♙</span><b>Data Anak</b></button>
+        <button class="nav-btn" data-page="immunization"><span>✚</span><b>Catat Imunisasi</b></button>
+        <button class="nav-btn" data-page="followup"><span>☏</span><b>Pengingat & Tindak Lanjut</b><i class="nav-count" id="sideReminderCount">0</i></button>
+        <button class="nav-btn" data-page="education"><span>▤</span><b>Edukasi</b></button>
+        <button class="nav-btn advanced-nav" data-page="dashboard"><span>▥</span><b>Dashboard Program</b></button>
+        <button class="nav-btn advanced-nav" data-page="report"><span>▧</span><b>Laporan</b></button>
+        <button class="nav-btn admin-nav" data-page="settings"><span>⚙</span><b>Pengaturan</b></button>
+      </nav>
+      <div class="nav-help">
+        <span class="help-icon">?</span>
+        <div><b>Butuh bantuan?</b><span>Mulai dari Beranda. Tombol yang penting dibuat besar dan berurutan.</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <button id="mobileMenuBtn" class="mobile-menu" aria-label="Buka menu">☰ Menu lainnya</button>
+
+      <section class="page active" id="page-home">
+        <div class="welcome-card">
+          <div class="welcome-copy">
+            <span class="eyebrow" id="greetingText">SELAMAT DATANG</span>
+            <h1>Catat layanan Posyandu dengan mudah.</h1>
+            <p>Pilih kegiatan yang ingin dilakukan. Sistem akan menghitung rekap, risiko, dan pengingat secara otomatis.</p>
+          </div>
+          <div class="date-pill" id="todayText"></div>
+        </div>
+
+        <div class="reminder-banner" id="homeReminderBanner">
+          <div class="reminder-banner-icon">🔔</div>
+          <div class="reminder-banner-copy"><b>Memeriksa pengingat hari ini…</b><span>Sistem akan menampilkan anak yang perlu dihubungi.</span></div>
+          <button class="btn light" data-jump="followup">Lihat pengingat</button>
+        </div>
+
+        <div class="section-heading">
+          <div><span class="section-kicker">AKSES CEPAT</span><h2>Apa yang ingin Ibu lakukan?</h2></div>
+          <span class="section-note">Cukup pilih satu</span>
+        </div>
+        <div class="quick-grid">
+          <button class="quick-card primary" data-jump="immunization">
+            <span class="quick-icon">💉</span>
+            <span><b>Catat Imunisasi</b><small>Pelayanan imunisasi hari ini</small></span>
+            <span class="arrow">›</span>
+          </button>
+          <button class="quick-card" data-jump="children">
+            <span class="quick-icon">👶</span>
+            <span><b>Cari / Tambah Anak</b><small>Lihat data atau daftarkan anak baru</small></span>
+            <span class="arrow">›</span>
+          </button>
+          <button class="quick-card warning" data-jump="followup">
+            <span class="quick-icon">📞</span>
+            <span><b>Hubungi Orang Tua</b><small>Jadwal lewat, jadwal dekat, dan sweeping</small></span>
+            <span class="quick-badge" id="quickReminderCount">0</span>
+          </button>
+          <button class="quick-card" data-jump="education">
+            <span class="quick-icon">📘</span>
+            <span><b>Catat Edukasi</b><small>Penyuluhan dan pre/post-test</small></span>
+            <span class="arrow">›</span>
+          </button>
+        </div>
+
+        <div class="summary-strip" id="homeSummary"></div>
+        <div class="card soft-card">
+          <div class="card-head">
+            <div><span class="section-kicker">PRIORITAS</span><h2>Yang perlu dilakukan hari ini</h2><p>Dikerjakan dari yang paling penting terlebih dahulu.</p></div>
+          </div>
+          <div id="todayTasks" class="task-list"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-children">
+        <div class="page-title"><div><span class="section-kicker">DATA SASARAN</span><h1>Data Anak</h1><p>Cari data dengan nama anak atau nama orang tua.</p></div><button class="btn primary large" id="showChildFormBtn">＋ Tambah Anak Baru</button></div>
+        <div class="card add-form-panel" id="childFormCard">
+          <div class="card-head"><div><span class="section-kicker">FORMULIR</span><h2 id="childFormTitle">Tambah Anak</h2><p>Isi data pokok terlebih dahulu. Tanda * wajib diisi.</p></div><span class="step-badge">Sekali isi</span></div>
+          <form id="childForm" class="simple-form">
+            <input type="hidden" id="childId" />
+            <div class="field full"><label>Nama anak *</label><input id="childName" required placeholder="Contoh: Alya Putri" autocomplete="off" /></div>
+            <div class="field"><label>Tanggal lahir *</label><input id="childDob" type="date" required /></div>
+            <div class="field"><label>Jenis kelamin *</label><select id="childSex"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
+            <div class="field"><label>Desa *</label><select id="childVillage" required></select></div>
+            <div class="field"><label>Dusun *</label><input id="childHamlet" required placeholder="Contoh: Dusun 1" /></div>
+            <div class="field"><label>Posyandu</label><input id="childPosyandu" placeholder="Contoh: Melati" /></div>
+            <div class="field"><label>NIK / ID lokal</label><input id="childNik" inputmode="numeric" placeholder="Boleh dikosongkan" /></div>
+            <div class="field full"><label>Nama ibu / orang tua *</label><input id="parentName" required placeholder="Nama ibu atau orang tua" /></div>
+            <div class="field full"><label>No. WhatsApp orang tua</label><input id="parentPhone" inputmode="tel" placeholder="Contoh: 08123456789" /></div>
+            <div class="field full"><label>Alamat / patokan rumah</label><textarea id="childAddress" rows="2" placeholder="Boleh diisi untuk memudahkan kunjungan"></textarea></div>
+            <div class="form-actions full"><button class="btn primary large" type="submit">✓ Simpan Data Anak</button><button class="btn secondary large" type="button" id="cancelChildEdit">Batal</button></div>
+          </form>
+        </div>
+        <div class="card search-card">
+          <div class="card-head responsive"><div><span class="section-kicker">PENCARIAN</span><h2>Cari Anak</h2><p>Ketik sebagian nama saja.</p></div><div class="filter-row"><input id="childSearch" class="large-input search-input" placeholder="🔎 Ketik nama anak / ibu…" /><select id="childVillageFilter"></select></div></div>
+          <div id="childrenCards" class="record-list"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-immunization">
+        <div class="page-title"><div><span class="section-kicker">PELAYANAN</span><h1>Catat Imunisasi</h1><p>Sentuh pilihan yang diperlukan. Tidak perlu menghafal kode atau mengetik banyak.</p></div></div>
+        <div class="simple-guide" aria-label="Petunjuk singkat"><span><b>1</b>Pilih anak</span><i>›</i><span><b>2</b>Pilih imunisasi</span><i>›</i><span><b>3</b>Periksa & simpan</span></div>
+
+        <div class="card form-focus immunization-card">
+          <form id="immunizationForm" class="simple-form" novalidate>
+            <div class="field full choice-step">
+              <div class="choice-step-head"><span class="step-number">1</span><div><label>Siapa anak yang dilayani? *</label><small>Bisa dicari dari nama anak, nama ibu, dusun, atau Posyandu.</small></div></div>
+              <button class="picker-button" id="openChildPicker" type="button">
+                <span class="picker-icon">👶</span><span class="picker-copy"><b id="eventChildLabel">Pilih anak</b><small id="eventChildSub">Tekan di sini untuk mencari</small></span><span class="picker-arrow">›</span>
+              </button>
+              <select id="eventChild" required class="native-picker-select" aria-hidden="true" tabindex="-1"></select>
+            </div>
+
+            <div class="child-preview full" id="selectedChildPreview"><span class="preview-icon">ℹ</span><span>Pilih anak terlebih dahulu. Riwayat terakhir akan muncul di sini.</span></div>
+
+            <div class="field full choice-step">
+              <div class="choice-step-head"><span class="step-number">2</span><div><label>Imunisasi apa yang diberikan? *</label><small>Yang belum tercatat ditampilkan lebih dulu.</small></div></div>
+              <button class="picker-button" id="openVaccinePicker" type="button" disabled>
+                <span class="picker-icon">💉</span><span class="picker-copy"><b id="eventVaccineLabel">Pilih imunisasi</b><small id="eventVaccineSub">Pilih anak terlebih dahulu</small></span><span class="picker-arrow">›</span>
+              </button>
+              <select id="eventVaccine" required class="native-picker-select" aria-hidden="true" tabindex="-1"></select>
+            </div>
+
+            <div class="full date-easy-card">
+              <div class="date-easy-copy"><span class="date-icon">📅</span><div><label for="eventDate">Tanggal pelayanan *</label><small>Kalau pelayanan dilakukan sekarang, biarkan tanggal hari ini.</small></div></div>
+              <div class="date-easy-actions"><input id="eventDate" type="date" required /><button class="btn secondary" id="useTodayBtn" type="button">Hari ini</button></div>
+            </div>
+
+            <details class="optional-box full"><summary>＋ Data tambahan <span>(boleh dikosongkan)</span></summary><div class="optional-grid">
+              <div class="field"><label>Tanggal datang berikutnya</label><input id="eventNextDue" type="date" /><small class="field-help">Isi sesuai Buku KIA atau arahan bidan. Sistem tidak menebak jadwal medis.</small></div>
+              <div class="field"><label>Nama petugas</label><input id="eventProvider" placeholder="Boleh kosong" /></div>
+              <div class="field"><label>No. batch / keterangan</label><input id="eventBatch" placeholder="Boleh kosong" /></div>
+              <div class="field full"><label>Catatan</label><textarea id="eventNotes" rows="2" placeholder="Boleh kosong"></textarea></div>
+            </div></details>
+
+            <div class="full immunization-review" id="immunizationReview" aria-live="polite">
+              <div class="review-empty"><span>✓</span><div><b>Periksa sebelum simpan</b><small>Pilih anak dan imunisasi. Ringkasannya akan muncul di sini.</small></div></div>
+            </div>
+            <div class="full info-box compact-info" id="validationInfo">Data yang Ibu simpan akan <b>diperiksa oleh bidan</b>.</div>
+            <div class="form-actions full sticky-save"><button class="btn primary xl" id="saveImmunizationBtn" type="submit" disabled>✓ Simpan Imunisasi</button></div>
+          </form>
+        <
