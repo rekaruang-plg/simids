@@ -1,0 +1,56 @@
+ class="bottom-nav-btn" data-page="children"><span>♙</span><b>Anak</b></button>
+    <button class="bottom-nav-btn center" data-page="immunization"><span>✚</span><b>Catat</b></button>
+    <button class="bottom-nav-btn" data-page="followup"><span class="bottom-icon-wrap">☏<i id="bottomReminderCount">0</i></span><b>Pengingat</b></button>
+    <button class="bottom-nav-btn" data-page="education"><span>▤</span><b>Edukasi</b></button>
+  </nav>
+
+  <div class="modal" id="followupModal" aria-hidden="true"><div class="modal-card"><div class="modal-head"><div><span class="section-kicker">SELESAI MENGHUBUNGI</span><h2>Catat Hasil Tindak Lanjut</h2><p id="followupChildName"></p></div><button class="close-btn" id="closeFollowupModal" aria-label="Tutup">×</button></div><form id="followupForm" class="simple-form"><input type="hidden" id="followupChildId" /><div class="field full"><label>Hasil *</label><select id="followupOutcome"><option value="contacted">Orang tua sudah dihubungi</option><option value="scheduled">Sudah dijadwalkan datang</option><option value="visited">Sudah dikunjungi kader</option><option value="immunized">Sudah diimunisasi</option><option value="refused">Menolak / belum bersedia</option><option value="unreachable">Belum dapat dihubungi</option></select></div><div class="field full"><label>Tanggal</label><input id="followupDate" type="date" /></div><div class="field full"><label>Catatan</label><textarea id="followupNotes" rows="3" placeholder="Boleh dikosongkan"></textarea></div><div class="form-actions full"><button class="btn primary large" type="submit">✓ Simpan Hasil</button></div></form></div></div>
+
+  <div class="modal reminder-modal" id="reminderModal" aria-hidden="true">
+    <div class="reminder-sheet">
+      <div class="reminder-sheet-handle"></div>
+      <div class="reminder-sheet-head">
+        <div class="reminder-big-icon">🔔</div>
+        <div><span class="section-kicker">PENGINGAT HARI INI</span><h2 id="reminderTitle">Ada anak yang perlu dihubungi</h2><p id="reminderSubtitle">Klik WhatsApp untuk membuka pesan yang sudah disiapkan.</p></div>
+        <button class="close-btn" id="closeReminderModal" aria-label="Tutup">×</button>
+      </div>
+      <div id="reminderList" class="reminder-list"></div>
+      <div class="reminder-sheet-actions">
+        <button class="btn secondary large" id="reminderLaterBtn">Nanti dulu</button>
+        <button class="btn primary large" id="reminderSeeAllBtn">Lihat semua pengingat</button>
+      </div>
+      <p class="privacy-note">WhatsApp tidak dikirim otomatis. Sistem hanya menyiapkan pesan, lalu Ibu menekan kirim sendiri di WhatsApp.</p>
+    </div>
+  </div>
+
+
+
+  <div class="modal picker-modal" id="childPickerModal" aria-hidden="true">
+    <div class="picker-sheet">
+      <div class="picker-sheet-head"><div><span class="section-kicker">PILIH ANAK</span><h2>Cari anak</h2><p>Bisa ketik nama anak, nama ibu, dusun, atau Posyandu.</p></div><button class="close-btn" data-close-picker="childPickerModal" aria-label="Tutup">×</button></div>
+      <div class="picker-search-wrap"><span>🔎</span><input id="childPickerSearch" type="search" placeholder="Contoh: Alya, Ibu Rina, Dusun 1…" autocomplete="off" inputmode="search" /></div>
+      <div class="picker-hint"><span>💡</span><span>Tidak harus mengetik lengkap. Cukup beberapa huruf.</span></div>
+      <div id="childPickerResults" class="picker-results"></div>
+      <div class="picker-sheet-footer"><button class="btn secondary large" id="pickerAddChildBtn" type="button">＋ Anak belum ada? Tambah data anak</button></div>
+    </div>
+  </div>
+
+  <div class="modal picker-modal" id="vaccinePickerModal" aria-hidden="true">
+    <div class="picker-sheet">
+      <div class="picker-sheet-head"><div><span class="section-kicker">PILIH IMUNISASI</span><h2>Imunisasi yang diberikan</h2><p>Pilih sesuai pelayanan yang dilakukan hari ini.</p></div><button class="close-btn" data-close-picker="vaccinePickerModal" aria-label="Tutup">×</button></div>
+      <div class="picker-search-wrap"><span>🔎</span><input id="vaccinePickerSearch" type="search" placeholder="Ketik MR, BCG, Polio…" autocomplete="off" inputmode="search" /></div>
+      <div class="picker-tabs" role="group" aria-label="Filter imunisasi"><button class="picker-tab active" type="button" data-vaccine-filter="missing">Belum tercatat</button><button class="picker-tab" type="button" data-vaccine-filter="all">Semua imunisasi</button></div>
+      <div id="vaccinePickerResults" class="picker-results vaccine-results"></div>
+    </div>
+  </div>
+
+  <div class="modal picker-modal" id="genericSelectModal" aria-hidden="true">
+    <div class="picker-sheet small-sheet">
+      <div class="picker-sheet-head"><div><span class="section-kicker">PILIH DATA</span><h2 id="genericSelectTitle">Pilih</h2><p id="genericSelectHelp">Ketik untuk mencari atau pilih dari daftar.</p></div><button class="close-btn" data-close-picker="genericSelectModal" aria-label="Tutup">×</button></div>
+      <div class="picker-search-wrap"><span>🔎</span><input id="genericSelectSearch" type="search" placeholder="Cari…" autocomplete="off" inputmode="search" /></div>
+      <div id="genericSelectResults" class="picker-results"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  
