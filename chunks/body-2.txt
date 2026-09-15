@@ -1,0 +1,89 @@
+/div>
+
+        <div class="success-card" id="immunizationSuccess" hidden></div>
+        <div class="card"><div class="card-head"><div><span class="section-kicker">TERBARU</span><h2>Input Terakhir</h2><p>Gunakan bagian ini untuk mengecek bahwa data sudah masuk.</p></div></div><div id="recentEvents" class="record-list"></div></div>
+      </section>
+
+      <section class="page" id="page-followup">
+        <div class="page-title"><div><span class="section-kicker">PENGINGAT</span><h1>Hubungi Orang Tua</h1><p>Sistem sudah mengurutkan anak yang perlu didahulukan.</p></div></div>
+        <div class="followup-help"><span>💡</span><div><b>Cara memakai halaman ini</b><p>Tekan <b>Kirim WhatsApp</b> untuk membuka pesan yang sudah disiapkan. Setelah selesai, tekan <b>Catat hasil</b>.</p></div></div>
+        <div class="risk-summary" id="riskSummary"></div>
+        <div class="card risk-map-card">
+          <div class="card-head responsive"><div><span class="section-kicker">PETA RISIKO DUSUN</span><h2>Prioritas Wilayah</h2><p>Sentuh dusun untuk melihat anak yang perlu ditindaklanjuti.</p></div><div class="filter-row"><select id="riskVillageFilter"></select><select id="riskStatusFilter"><option value="all">Semua pengingat</option><option value="overdue">Jadwal sudah lewat</option><option value="due">Jadwal dekat</option><option value="mr2">MR-2 belum tercatat</option></select></div></div>
+          <div class="risk-map-legend"><span><i class="legend-dot high"></i> Prioritas tinggi</span><span><i class="legend-dot medium"></i> Perlu perhatian</span><span><i class="legend-dot low"></i> Risiko lebih rendah</span></div>
+          <div id="riskMap" class="risk-map"></div>
+          <div class="risk-map-foot"><span id="riskHamletActive">Sentuh salah satu dusun pada peta untuk memfilter daftar anak.</span><small>Peta ini bersifat skematik untuk menunjukkan tingkat risiko per dusun, bukan batas geografis sebenarnya.</small></div>
+        </div>
+        <div class="card"><div class="card-head"><div><span class="section-kicker">DAFTAR ANAK</span><h2>Yang Perlu Dihubungi</h2><p>Pesan WhatsApp tidak dikirim otomatis. Ibu tetap menekan tombol kirim sendiri di WhatsApp.</p></div></div><div id="followupList" class="record-list"></div></div>
+      </section>
+
+      <section class="page" id="page-education">
+        <div class="page-title"><div><span class="section-kicker">KEGIATAN PROGRAM</span><h1>Edukasi & Evaluasi</h1><p>Catat penyuluhan, pelatihan kader, serta pre-test dan post-test.</p></div></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head"><div><h2>Catat Kegiatan Edukasi</h2><p>Satu entri untuk setiap sesi.</p></div></div>
+            <form id="educationForm" class="simple-form">
+              <div class="field"><label>Tanggal *</label><input id="eduDate" type="date" required /></div>
+              <div class="field"><label>Jenis kegiatan *</label><select id="eduType"><option value="ibu">Penyuluhan Ibu Balita</option><option value="kader_risk">Pelatihan Kader - Komunikasi Risiko</option><option value="kader_digital">Pelatihan Kader - Operasional Digital</option><option value="peer">Kelompok Peduli Imunisasi</option></select></div>
+              <div class="field"><label>Desa *</label><select id="eduVillage"></select></div>
+              <div class="field"><label>Dusun</label><input id="eduHamlet" placeholder="Contoh: Dusun 1" /></div>
+              <div class="field"><label>Jumlah peserta *</label><input id="eduParticipants" type="number" min="1" value="10" required /></div>
+              <div class="field"><label>Materi</label><select id="eduTopic"><option>Jadwal imunisasi MR</option><option>Gejala dan bahaya campak</option><option>Mitos dan fakta vaksin</option><option>Akses layanan imunisasi</option><option>Penggunaan SiMIDS</option><option>Komunikasi risiko</option></select></div>
+              <div class="field full"><label>Catatan</label><textarea id="eduNotes" rows="2"></textarea></div>
+              <div class="form-actions full"><button class="btn primary large" type="submit">Simpan Kegiatan</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h2>Input Pre-test / Post-test</h2><p>Untuk mengukur peningkatan pengetahuan dan kemampuan digital.</p></div></div>
+            <form id="assessmentForm" class="simple-form">
+              <div class="field full"><label>Nama peserta *</label><input id="assessmentName" required /></div>
+              <div class="field"><label>Jenis peserta</label><select id="assessmentType"><option value="ibu">Ibu Balita</option><option value="kader">Kader Posyandu</option></select></div>
+              <div class="field"><label>Desa</label><select id="assessmentVillage"></select></div>
+              <div class="field"><label>Nilai pre-test</label><input id="assessmentPre" type="number" min="0" max="100" required /></div>
+              <div class="field"><label>Nilai post-test</label><input id="assessmentPost" type="number" min="0" max="100" required /></div>
+              <div class="field full"><label>Tanggal</label><input id="assessmentDate" type="date" required /></div>
+              <div class="form-actions full"><button class="btn primary large" type="submit">Simpan Nilai</button></div>
+            </form>
+          </div>
+        </div>
+        <div class="card"><div class="card-head"><div><h2>Materi Edukasi Program</h2><p>Ringkasan media sesuai proposal.</p></div></div><div class="material-grid"><div class="material-card"><b>📄 Leaflet</b><span>Campak, jadwal MR, efek samping umum, dan akses Posyandu.</span></div><div class="material-card"><b>🪧 Flipchart A3</b><span>Media bantu kader saat penyuluhan kelompok.</span></div><div class="material-card"><b>🎬 Video 3–5 menit</b><span>Materi singkat untuk dibagikan melalui WhatsApp.</span></div><div class="material-card"><b>📕 Panduan Kader</b><span>Input data, membaca risiko, dan prosedur sweeping.</span></div></div></div>
+        <div class="card"><div class="card-head"><div><h2>Riwayat Kegiatan & Evaluasi</h2></div></div><div id="educationHistory" class="record-list"></div><div id="assessmentSummary" class="summary-panel"></div></div>
+      </section>
+
+      <section class="page" id="page-dashboard">
+        <div class="page-title"><div><span class="section-kicker">BIDAN / PUSKESMAS</span><h1>Dashboard Program</h1><p>Cakupan, risiko, tren, validasi, dan target proposal.</p></div></div>
+        <div class="kpi-grid" id="programKpis"></div>
+        <div class="two-col dashboard-top-grid">
+          <div class="card trend-card"><div class="card-head responsive"><div><span class="section-kicker">CAKUPAN MINGGUAN</span><h2>Tren Cakupan Imunisasi</h2><p>Menunjukkan perubahan cakupan kumulatif, bukan jumlah input.</p></div><div class="trend-select-wrap"><label for="trendVaccineSelect">Imunisasi</label><select id="trendVaccineSelect"><option value="MR2">MR-2</option><option value="MR1">MR-1</option><option value="BCG">BCG</option><option value="IBL">Imunisasi Bayi Lengkap</option></select></div></div><div id="trendSummary" class="trend-summary"></div><div id="weeklyTrend" class="coverage-trend"></div></div>
+          <div class="card"><div class="card-head"><div><span class="section-kicker">SAAT INI</span><h2>Cakupan Imunisasi Prioritas</h2><p>Hanya data yang sudah divalidasi.</p></div></div><div id="coverageBars" class="coverage-list"></div></div>
+        </div>
+        <div class="card"><div class="card-head"><div><h2>Indikator Target Proposal</h2><p>Monitoring target proses dan luaran akhir.</p></div></div><div id="proposalTargets" class="target-grid"></div></div>
+        <div class="card"><div class="card-head"><div><h2>Menunggu Validasi Bidan</h2><p>Kader tidak dapat memvalidasi sendiri.</p></div></div><div id="validationQueue" class="record-list"></div></div>
+      </section>
+
+      <section class="page" id="page-report">
+        <div class="page-title"><div><span class="section-kicker">REKAP</span><h1>Laporan</h1><p>Rekap otomatis dari input kader. Tampilan ringkas untuk dibaca, format Excel untuk pelaporan.</p></div></div>
+        <div class="card report-control-card"><div class="card-head responsive"><div><span class="section-kicker">FILTER LAPORAN</span><h2>Laporan Kumulatif Imunisasi</h2><p>Persentase dihitung dari master sasaran dan hanya memakai data yang sudah divalidasi.</p></div><div class="filter-row"><select id="reportVillageFilter"></select><select id="reportMonthFilter"></select><button class="btn secondary" id="exportReportBtn">⬇ Unduh Format Excel (CSV)</button><button class="btn secondary" onclick="window.print()">🖨 Cetak</button></div></div><div id="reportMeta" class="report-meta"></div><div id="reportTargetSummary" class="report-target-grid"></div></div>
+        <div class="card"><div class="card-head"><div><span class="section-kicker">MUDAH DIBACA</span><h2>Ringkasan per Imunisasi</h2><p>Dipakai untuk memeriksa angka dengan cepat sebelum laporan dikirim.</p></div></div><div class="table-wrap"><table><thead><tr><th>Imunisasi</th><th>L</th><th>% L</th><th>P</th><th>% P</th><th>Jumlah</th><th>% Total</th></tr></thead><tbody id="reportTableBody"></tbody></table></div></div>
+        <details class="card excel-report-details">
+          <summary><span><span class="section-kicker">FORMAT SUMBER</span><b>Preview Format Excel Tanjung Lago</b><small>Kolom mengikuti struktur file report: Sasaran Pusdatin, Sasaran Daerah, lalu seluruh hasil imunisasi L/P/Jumlah dan persentase.</small></span><i>⌄</i></summary>
+          <div class="excel-scroll-hint">Geser tabel ke kanan untuk melihat semua jenis imunisasi.</div>
+          <div class="table-wrap excel-table-wrap"><table id="excelReportTable" class="excel-table"></table></div>
+        </details>
+        <div class="card"><div class="card-head"><div><h2>Laporan Tindak Lanjut</h2><p>Hasil sweeping yang dicatat kader.</p></div></div><div id="followupReport" class="summary-panel"></div></div>
+      </section>
+
+      <section class="page" id="page-settings">
+        <div class="page-title"><div><span class="section-kicker">ADMIN</span><h1>Pengaturan</h1><p>Bagian ini bukan untuk pekerjaan kader sehari-hari.</p></div></div>
+        <div class="two-col">
+          <div class="card"><div class="card-head"><div><h2>Identitas Sistem</h2></div></div><form id="settingsForm" class="simple-form"><div class="field full"><label>Puskesmas</label><input id="settingPuskesmas" /></div><div class="field"><label>Tahun laporan</label><input id="settingYear" type="number" /></div><div class="field"><label>Desa fokus</label><select id="settingFocusVillage"></select></div><div class="field"><label>Pengingat jadwal dekat (hari)</label><input id="settingWarningDays" type="number" min="1" max="90" /></div><div class="form-actions full"><button class="btn primary" type="submit">Simpan Pengaturan</button></div></form></div>
+          <div class="card"><div class="card-head"><div><h2>Backup Data</h2><p>Prototype V5 menyimpan data di perangkat ini.</p></div></div><div class="stack-actions"><button class="btn secondary" id="downloadBackupBtn">Unduh Backup JSON</button><label class="upload-btn">Impor Backup JSON<input type="file" id="importBackupInput" accept="application/json" /></label><button class="btn danger" id="resetDemoBtn">Reset Data Demo</button></div><div class="info-box">Versi produksi menggunakan database bersama agar kader, bidan, dan Puskesmas melihat data yang sama.</div></div>
+        </div>
+        <div class="card"><div class="card-head"><div><h2>Master Sasaran per Desa</h2><p>Struktur mengikuti empat kelompok sasaran pada report Excel: Pusdatin BBL/SI dan Sasaran Daerah BBL/SI.</p></div></div><div id="targetMaster" class="record-list"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Navigasi cepat ponsel">
+    <button class="bottom-nav-btn active" data-page="home"><span>⌂</span><b>Beranda</b></button>
+    <button 
