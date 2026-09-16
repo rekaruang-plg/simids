@@ -29,11 +29,16 @@
   }
   async function all(table,order='id') {
     const rows=[];
-    for(let start=0;;start+=1000) {
-      const {data,error}=await client.from(table).select('*').order(order).range(start,start+999);
+    let cursor=null;
+    for(;;) {
+      let query=client.from(table).select('*').order(order).limit(1000);
+      if(cursor!==null)query=query.gt(order,cursor);
+      const {data,error}=await query;
       if(error)throw error;
       rows.push(...data);
       if(data.length<1000)return rows;
+      cursor=data[data.length-1]?.[order];
+      if(cursor===null||cursor===undefined)throw new Error(`Kolom ${order} tidak dapat dipakai untuk pagination.`);
     }
   }
   async function load() {
