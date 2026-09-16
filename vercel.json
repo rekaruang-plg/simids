@@ -15,7 +15,7 @@
       "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
     },
     {
-      "source": "/(app|backend|loader|v61-patch|v62-history-patch|v63-low-bandwidth)\\.js",
+      "source": "/(app|backend|loader|v61-patch|v62-history-patch|v63-low-bandwidth|v63-runtime-bridge)\\.js",
       "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
     }
   ]
