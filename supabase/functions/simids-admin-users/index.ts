@@ -49,6 +49,12 @@ Deno.serve(async (req: Request) => {
       .order("created_at", { ascending: true });
     if (error) return json({ error: error.message }, 500);
 
+    const { data: targetRows, error: targetError } = await admin
+      .from("simids_targets")
+      .select("village")
+      .order("village", { ascending: true });
+    if (targetError) return json({ error: targetError.message }, 500);
+
     const authUsers: any[] = [];
     let page = 1;
     for (;;) {
@@ -72,7 +78,8 @@ Deno.serve(async (req: Request) => {
         last_sign_in_at: authUser?.last_sign_in_at || null,
       };
     });
-    return json({ users });
+    const villages = [...new Set((targetRows || []).map((row: any) => row.village).filter(Boolean))];
+    return json({ users, villages });
   }
 
   if (action === "create") {
