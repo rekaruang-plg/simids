@@ -30,14 +30,14 @@
 
     const label=role.closest('.role-control');
     const labelText=label?.querySelector(':scope > span');
-    if(labelText)labelText.textContent='Mode uji';
-    if(label){label.title='Khusus prototype: ganti peran untuk mencoba tampilan pengguna'}
-    role.setAttribute('aria-label','Ganti peran untuk uji prototype');
-    const names={kader:'Uji: Kader',bidan:'Uji: Bidan',puskesmas:'Uji: Puskesmas'};
+    if(labelText)labelText.textContent='Peran';
+    if(label){label.title='Hak akses ditentukan administrator'}
+    role.setAttribute('aria-label','Peran petugas');
+    const names={kader:'Kader',bidan:'Bidan',puskesmas:'Puskesmas'};
     [...role.options].forEach(o=>{if(names[o.value])o.textContent=names[o.value]});
 
     const sideSmall=document.querySelector('.side-intro small');
-    if(sideSmall)sideSmall.textContent='Mode uji sebagai';
+    if(sideSmall)sideSmall.textContent='Masuk sebagai';
 
     const note=document.querySelector('.kohort-source-note');
     if(note){
