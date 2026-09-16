@@ -1,0 +1,22 @@
+-- Applied to production Supabase on 2026-09-16.
+-- Dashboard Imunisasi Desa: 12 desa master, missing per vaccine, realtime publication.
+-- Do not re-run blindly on the same project; this file documents the production function.
+
+-- Production function:
+-- public.simids_village_immunization_dashboard(p_village text default null) returns jsonb
+-- Access rules:
+--   admin/puskesmas: all 12 master villages or one selected village
+--   kader/bidan: forced to their assigned village
+-- Metrics:
+--   18 operational immunization codes: HB0, BCG, OPV1-4, DPT-HB-Hib1-3,
+--   IPV1-2, ROTA1-3, PCV1-2, MR1, MR2
+--   Missing means no matching immunization record exists for that child/code.
+--   This is operational completeness monitoring, not clinical due-date assessment.
+-- Village map only uses public.simids_targets as the 12 official villages.
+-- Village matching normalizes spaces/punctuation so TANJUNG LAGO matches TANJUNGLAGO.
+-- Rows with village values outside the 12 master villages are returned as unmapped_children.
+
+-- Realtime publication enabled for:
+--   public.simids_children
+--   public.simids_immunizations
+-- Frontend listens to postgres_changes and re-queries this aggregate RPC with debounce.
