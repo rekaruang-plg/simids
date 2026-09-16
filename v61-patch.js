@@ -18,6 +18,7 @@
     .simids-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0 4px;flex-wrap:wrap}
     .simids-pager button{min-height:42px;padding:8px 14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-weight:700;cursor:pointer}
     .simids-pager button:disabled{opacity:.45;cursor:default}.simids-pager span{color:#64748b;font-weight:700}
+    .simids-remote-note{margin:8px 0 12px;padding:10px 12px;border-radius:11px;background:#eff6ff;color:#1e3a8a;font-size:13px}
     .simids-user-admin{margin-bottom:18px}
     .simids-user-note{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:12px 14px;margin-bottom:16px;color:#166534}
     .simids-user-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -48,8 +49,11 @@
 
   const PAGE_SIZE=50;
   let childPage=1,scopeBusy=false,adminUsersBusy=false,adminUsersLoaded=false,adminVillages=[];
-  const scopeSelectIds=new Set(['childVillageFilter','riskVillageFilter','reportVillageFilter','settingFocusVillage']);
+  let remoteChildMode=false,remoteChildPage=1,remoteChildBusy=false,remoteChildSearch='',remoteChildResult=null,remoteSearchTimer=null;
+  const scopeSelectIds=new Set(['riskVillageFilter','reportVillageFilter','settingFocusVillage']);
   const escHtml=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const fmtDate=v=>{if(!v)return'-';const d=new Date(v+'T00:00:00');return Number.isNaN(d.getTime())?v:d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})};
+  const vaccineLabel=id=>({HB0:'HB0',BCG:'BCG',OPV1:'OPV-1',OPV2:'OPV-2',OPV3:'OPV-3',OPV4:'OPV-4',DPT_HB_HIB1:'DPT/HB-Hib-1',DPT_HB_HIB2:'DPT/HB-Hib-2',DPT_HB_HIB3:'DPT/HB-Hib-3',IPV1:'IPV-1',IPV2:'IPV-2',ROTA1:'Rotavirus-1',ROTA2:'Rotavirus-2',ROTA3:'Rotavirus-3',PCV1:'Pneumokokus-1',PCV2:'Pneumokokus-2',MR1:'MR-1',MR2:'MR-2'})[id]||id||'-';
 
   function loading(show,label='Memuat data…'){
     let el=document.getElementById('simidsScopeOverlay');
@@ -101,6 +105,7 @@
     scopeBusy=true;loading(true,requested==='all'?'Memuat semua desa…':`Memuat ${requested}…`);
     try{
       await window.SimidsBackend.loadScope(currentState(),requested);
+      remoteChildMode=false;remoteChildResult=null;
       if(typeof window.indexEvents==='function')window.indexEvents();
       if(typeof window.renderAll==='function')window.renderAll();
       alignScopeFilters(requested);
@@ -111,12 +116,68 @@
     }finally{loading(false);scopeBusy=false}
   }
 
+  function renderRemoteChildren(){
+    const list=document.getElementById('childrenCards');if(!list||!remoteChildResult)return;
+    document.getElementById('simidsChildrenPager')?.remove();
+    document.getElementById('simidsRemoteChildrenPager')?.remove();
+    document.getElementById('simidsRemoteChildrenNote')?.remove();
+    const note=document.createElement('div');note.id='simidsRemoteChildrenNote';note.className='simids-remote-note';note.textContent=`Semua desa ditampilkan per ${remoteChildResult.pageSize} anak. Hanya halaman yang sedang dibuka yang diambil dari server.`;
+    list.before(note);
+    const rows=remoteChildResult.children||[];
+    list.innerHTML=rows.length?rows.map(c=>`<div class="record-card"><div class="record-main"><b>${escHtml(c.name)}</b><small>${escHtml(c.parentName||'-')} • ${escHtml(c.village||'-')} / ${escHtml(c.hamlet||'-')} • ${c.sex==='L'?'Laki-laki':'Perempuan'}</small><small class="simids-history-summary ${c.immunizationCount?'':'empty'}">${c.immunizationCount?`✓ ${c.immunizationCount} riwayat imunisasi • terakhir ${escHtml(vaccineLabel(c.lastVaccine))} (${fmtDate(c.lastImmunizationDate)})`:'Belum ada riwayat imunisasi tercatat'}</small></div><div class="record-actions"><button class="mini-btn" type="button" data-remote-history="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">Riwayat</button><button class="mini-btn primary" type="button" data-remote-immunize="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">💉 Imunisasi</button></div></div>`).join(''):'<div class="empty">Data anak tidak ditemukan.</div>';
+    const pager=document.createElement('div');pager.id='simidsRemoteChildrenPager';pager.className='simids-pager';
+    pager.innerHTML=`<button type="button" data-remote-child-page="prev" ${remoteChildResult.page<=1?'disabled':''}>‹ Sebelumnya</button><span>Halaman ${remoteChildResult.page} / ${remoteChildResult.pages} • ${remoteChildResult.total} anak</span><button type="button" data-remote-child-page="next" ${remoteChildResult.page>=remoteChildResult.pages?'disabled':''}>Berikutnya ›</button>`;
+    list.after(pager);
+  }
+
+  async function loadRemoteChildrenPage(page=1){
+    if(remoteChildBusy||!window.SimidsBackend?.loadChildrenPage)return;
+    remoteChildBusy=true;remoteChildMode=true;remoteChildPage=Math.max(1,page||1);loading(true,'Memuat halaman data anak…');
+    try{
+      remoteChildResult=await window.SimidsBackend.loadChildrenPage({village:'all',search:remoteChildSearch,page:remoteChildPage,pageSize:PAGE_SIZE});
+      remoteChildPage=remoteChildResult.page;
+      const filter=document.getElementById('childVillageFilter');if(filter)filter.value='all';
+      renderRemoteChildren();
+    }catch(error){console.error(error);alert('Halaman data anak belum dapat dimuat: '+(error?.message||error));remoteChildMode=false}
+    finally{loading(false);remoteChildBusy=false}
+  }
+
+  async function openRemoteChild(id,village,mode){
+    if(scopeBusy)return;
+    scopeBusy=true;loading(true,`Membuka ${village||'desa anak'}…`);
+    try{
+      await window.SimidsBackend.loadScope(currentState(),village);
+      remoteChildMode=false;remoteChildResult=null;
+      if(typeof window.indexEvents==='function')window.indexEvents();
+      if(typeof window.renderAll==='function')window.renderAll();
+      alignScopeFilters(village);refreshServicePlaces();updateScopeBadge();
+      if(typeof window.showPage==='function')window.showPage('immunization');
+      const select=document.getElementById('eventChild');if(select){select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}))}
+      if(mode==='history')setTimeout(()=>document.getElementById('selectedChildPreview')?.scrollIntoView({behavior:'smooth',block:'center'}),40);
+    }catch(error){console.error(error);alert('Data anak belum dapat dibuka: '+(error?.message||error))}
+    finally{loading(false);scopeBusy=false}
+  }
+
   document.addEventListener('change',e=>{
     const el=e.target;
-    if(el&&scopeSelectIds.has(el.id))switchScope(el.value);
+    if(!el)return;
+    if(el.id==='childVillageFilter'){
+      e.stopPropagation();
+      childPage=1;
+      if(el.value==='all'){remoteChildSearch=document.getElementById('childSearch')?.value.trim()||'';loadRemoteChildrenPage(1)}
+      else{remoteChildMode=false;document.getElementById('simidsRemoteChildrenNote')?.remove();document.getElementById('simidsRemoteChildrenPager')?.remove();switchScope(el.value)}
+      return;
+    }
+    if(scopeSelectIds.has(el.id))switchScope(el.value);
+  },true);
+
+  document.addEventListener('input',e=>{
+    if(e.target?.id!=='childSearch'||!remoteChildMode)return;
+    e.stopPropagation();clearTimeout(remoteSearchTimer);remoteChildSearch=e.target.value.trim();remoteSearchTimer=setTimeout(()=>loadRemoteChildrenPage(1),250);
   },true);
 
   function applyChildPagination(){
+    if(remoteChildMode)return;
     const list=document.getElementById('childrenCards');if(!list)return;
     const cards=[...list.children].filter(x=>!x.classList.contains('simids-pager'));
     let pager=document.getElementById('simidsChildrenPager');
@@ -128,6 +189,10 @@
   }
 
   document.addEventListener('click',e=>{
+    const remotePage=e.target.closest('[data-remote-child-page]');
+    if(remotePage){const next=remoteChildPage+(remotePage.dataset.remoteChildPage==='next'?1:-1);loadRemoteChildrenPage(next);document.getElementById('childrenCards')?.scrollIntoView({behavior:'smooth',block:'start'});return}
+    const remoteHistory=e.target.closest('[data-remote-history]');if(remoteHistory){openRemoteChild(remoteHistory.dataset.remoteHistory,remoteHistory.dataset.remoteVillage,'history');return}
+    const remoteImmunize=e.target.closest('[data-remote-immunize]');if(remoteImmunize){openRemoteChild(remoteImmunize.dataset.remoteImmunize,remoteImmunize.dataset.remoteVillage,'immunize');return}
     const b=e.target.closest('[data-child-page]');if(!b)return;
     childPage+=b.dataset.childPage==='next'?1:-1;applyChildPagination();
     document.getElementById('childrenCards')?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -135,7 +200,7 @@
 
   function watchChildren(){
     const list=document.getElementById('childrenCards');if(!list)return;
-    const obs=new MutationObserver(()=>{childPage=1;queueMicrotask(applyChildPagination)});
+    const obs=new MutationObserver(()=>{if(remoteChildMode)return;childPage=1;queueMicrotask(applyChildPagination)});
     obs.observe(list,{childList:true});applyChildPagination();
   }
 
