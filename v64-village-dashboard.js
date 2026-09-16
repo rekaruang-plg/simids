@@ -1,7 +1,8 @@
 (()=>{
   const URL='https://ntdqqzqgkylxixivkmrp.supabase.co';
   const KEY='sb_publishable_QeWv7cMl3JCrHWBN0m5cQA_IN0Tbk_w';
-  const client=supabase.createClient(URL,KEY,{auth:{storage:sessionStorage,storageKey:'simids-auth',persistSession:true,autoRefreshToken:false,detectSessionInUrl:false}});
+  let dashboardClient=null;
+  const client=()=>dashboardClient||(dashboardClient=supabase.createClient(URL,KEY,{auth:{storage:sessionStorage,storageKey:'simids-auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}));
   let initialized=false,busy=false,channel=null,refreshTimer=null,stale=false,officialVillages=[];
   const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const pct=n=>Number(n||0).toLocaleString('id-ID',{maximumFractionDigits:1});
@@ -28,6 +29,7 @@
     const menu=document.querySelector('.side-menu'),main=document.querySelector('.main-content');if(!menu||!main)return false;
     const dashboardBtn=menu.querySelector('[data-page="dashboard"]');
     const btn=document.createElement('button');btn.className='nav-btn advanced-nav';btn.dataset.page='village-dashboard';btn.innerHTML='<span>▦</span><b>Dashboard Imunisasi Desa</b>';
+    if(role()==='kader')btn.style.display='none';
     dashboardBtn?.insertAdjacentElement('afterend',btn);
     const page=document.createElement('section');page.className='page';page.id='page-village-dashboard';page.innerHTML=`
       <div class="page-title"><div><span class="section-kicker">MONITORING DESA</span><h1>Dashboard Imunisasi Desa</h1><p>Peta risiko per desa dan jumlah anak yang belum memiliki catatan imunisasi per jenis. Tidak memakai dusun.</p></div></div>
@@ -55,7 +57,8 @@
     const filter=document.getElementById('villageDashFilter');
     if((filter?.value||'all')==='all'&&villages.length>1){officialVillages=[...new Set(villages.map(v=>v.village).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id'));fillFilter();if(filter)filter.value='all'}
     const high=villages.filter(v=>v.risk_level==='high').length;
-    kpis.innerHTML=[['Anak dalam 12 desa',Number(data.total_children||0).toLocaleString('id-ID')],['Desa risiko tinggi',high],['Menunggu validasi',Number(data.pending_validation||0).toLocaleString('id-ID')],['Jenis imunisasi',vaccines.length]].map(([l,v])=>`<div class="village-kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+    const childLabel=(data.scope||'all')==='all'?'Anak dalam 12 desa':'Anak di desa';
+    kpis.innerHTML=[[childLabel,Number(data.total_children||0).toLocaleString('id-ID')],['Desa risiko tinggi',high],['Menunggu validasi',Number(data.pending_validation||0).toLocaleString('id-ID')],['Jenis imunisasi',vaccines.length]].map(([l,v])=>`<div class="village-kpi"><b>${v}</b><span>${l}</span></div>`).join('');
     const quality=document.getElementById('villageDashQuality'),unmapped=Number(data.unmapped_children||0);
     if(quality){quality.hidden=!unmapped;quality.innerHTML=unmapped?`<b>Perlu cek kualitas data:</b> ${unmapped.toLocaleString('id-ID')} anak memiliki nilai desa di luar 12 desa master, sehingga tidak dimasukkan ke peta risiko desa ini.`:''}
     const map=document.getElementById('villageRiskGrid');
@@ -70,7 +73,7 @@
     if(!silent)setLive('Memuat ringkasan…',true);
     try{
       const village=document.getElementById('villageDashFilter')?.value||'all';
-      const {data,error}=await client.rpc('simids_village_immunization_dashboard',{p_village:village==='all'?null:village});
+      const {data,error}=await client().rpc('simids_village_immunization_dashboard',{p_village:village==='all'?null:village});
       if(error)throw error;render(data||{});
     }catch(err){console.error(err);setLive('Gagal memperbarui • tekan Perbarui',true)}
     finally{busy=false;page?.classList.remove('dashboard-refreshing')}
@@ -83,7 +86,7 @@
 
   function startRealtime(){
     if(channel)return;
-    channel=client.channel('simids-village-dashboard-live')
+    channel=client().channel('simids-village-dashboard-live')
       .on('postgres_changes',{event:'*',schema:'public',table:'simids_children'},scheduleRealtime)
       .on('postgres_changes',{event:'*',schema:'public',table:'simids_immunizations'},scheduleRealtime)
       .subscribe(status=>{if(status==='SUBSCRIBED')setLive('Real-time aktif',false);else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')setLive('Real-time terputus • gunakan Perbarui',true)});
