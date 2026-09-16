@@ -2,6 +2,9 @@
 
 SiMIDS V6 adalah prototype pencatatan kohort bayi dan imunisasi untuk kader Posyandu, bidan desa, dan Puskesmas Tanjung Lago. V6 menyesuaikan input dengan struktur **data individu kohort bayi** yang biasa digunakan, tetapi antarmuka kader dibuat jauh lebih sederhana agar nyaman dipakai lewat smartphone.
 
+## Data demo
+Prototype sekarang memuat **10 anak dummy** untuk uji coba alur kader. Seluruh nama, NIK, nomor telepon, dan alamat pada data demo bersifat fiktif. Pola imunisasi, tanggal pelayanan/input, dan Pos Imunisasi dibuat menyerupai struktur kohort individu agar fitur input, pengingat, validasi, dashboard, sweeping, dan ekspor dapat diuji tanpa memakai data pribadi anak asli.
+
 ## Alur kader
 1. Cari atau pilih anak dengan pencarian nama anak, NIK, nama orang tua, dusun, atau Posyandu.
 2. Pilih jenis imunisasi dari daftar besar yang dapat dicari.
