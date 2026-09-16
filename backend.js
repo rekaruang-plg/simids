@@ -13,15 +13,9 @@
     education: ['simids_education',{date:'activity_date',type:'activity_type'},'id,date,type,village,hamlet,participants,topic,notes'],
     assessments: ['simids_assessments',{name:'respondent_name',type:'respondent_type',date:'assessment_date',pre:'pre_score',post:'post_score'},'id,name,type,village,date,pre,post']
   };
-  const readColumns = {
-    children: 'id,name,dob,sex,village,hamlet,posyandu,nik,parent_name,phone,address,province,district,subdistrict,puskesmas,registered_at,updated_at',
-    events: 'id,child_id,vaccine_code,immunization_date,input_date,service_place,next_due_date,batch_number,notes,validated,provider,updated_at,created_at,source_import',
-    followups: 'id,child_id,followup_date,outcome,notes',
-    education: 'id,activity_date,activity_type,village,hamlet,participants,topic,notes',
-    assessments: 'id,respondent_name,respondent_type,village,assessment_date,pre_score,post_score'
-  };
   const actions = {save_child:'children',save_immunization:'events',validate_event:'events',save_followup:'followups',save_education:'education',save_assessment:'assessments'};
-  let baseline, access;
+  let baseline, access, scopePromise=null;
+
   function unpack(key,row) {
     const [,mapping,fields]=maps[key], out={};
     fields.split(',').forEach(k=>out[k]=row[mapping[k]||k]??'');
@@ -34,53 +28,95 @@
     fields.split(',').forEach(k=>out[mapping[k]||k]=row[k]===''||row[k]===undefined?null:row[k]);
     return out;
   }
-  async function all(table,order='id',columns='*') {
-    const rows=[];
-    let cursor=null;
-    for(;;) {
-      let query=client.from(table).select(columns).order(order).limit(1000);
-      if(cursor!==null)query=query.gt(order,cursor);
-      const {data,error}=await query;
-      if(error)throw error;
-      rows.push(...data);
-      if(data.length<1000)return rows;
-      cursor=data[data.length-1]?.[order];
-      if(cursor===null||cursor===undefined)throw new Error(`Kolom ${order} tidak dapat dipakai untuk pagination.`);
-    }
-  }
-  async function load() {
+  const camel=k=>k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
+
+  async function getAccess() {
     const {data:{user},error:authError}=await client.auth.getUser();
     if(authError||!user)throw new Error('Silakan masuk kembali.');
     const {data,error}=await client.from('simids_user_access').select('user_id,role,village,active').eq('user_id',user.id).eq('active',true).maybeSingle();
     if(error)throw error;
     if(!data)throw new Error('Akun belum diberi akses SiMIDS. Hubungi administrator.');
     access=data;
-    const keys=Object.keys(maps);
-    const result=await Promise.all(keys.map(k=>all(maps[k][0],'id',readColumns[k])));
-    const state={settings:{role:access.role==='admin'?'puskesmas':access.role,puskesmas:'Puskesmas Tanjung Lago',year:new Date().getFullYear(),focusVillage:access.village||'TANJUNGLAGO',warningDays:30},audit:[]};
-    keys.forEach((key,i)=>state[key]=result[i].map(row=>unpack(key,row)));
-    const idls=await all('simids_idl','child_id','child_id,idl_date,input_date,service_place,forming_puskesmas,status');
-    const byId=new Map(idls.map(x=>[x.child_id,x]));
-    state.children.forEach(c=>{const i=byId.get(c.id);if(i)Object.assign(c,{idlDate:i.idl_date||'',idlInputDate:i.input_date||'',idlPlace:i.service_place||'',idlPkm:i.forming_puskesmas||'',idlStatus:i.status||''})});
-    const targets=await all('simids_targets','village','village,pusdatin_birth_male,pusdatin_birth_female,pusdatin_surviving_male,pusdatin_surviving_female,local_birth_male,local_birth_female,local_surviving_male,local_surviving_female,verified');
-    const camel=k=>k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
-    const byVillage=new Map(targets.map(t=>[t.village,{name:t.village,...Object.fromEntries(Object.entries(t).filter(([k])=>!['village','updated_at'].includes(k)).map(([k,v])=>[camel(k),k==='verified'?v:(t.verified?v:0)]))}]));
-    state.children.forEach(c=>{if(!byVillage.has(c.village))byVillage.set(c.village,{name:c.village})});
-    state.targets=[...byVillage.values()].sort((a,b)=>a.name.localeCompare(b.name));
-    if(!byVillage.has(state.settings.focusVillage))state.settings.focusVillage=state.targets[0]?.name||'';
-    baseline=structuredClone(state);
-    return state;
+    return data;
   }
+
+  async function fetchScope(village) {
+    const normalized=village==='all'||village===''?null:village;
+    const {data,error}=await client.rpc('simids_load_scope',{p_village:normalized});
+    if(error)throw error;
+    if(!data||typeof data!=='object')throw new Error('Data SiMIDS tidak dapat dimuat.');
+    return data;
+  }
+
+  function applyPayload(state,payload,{focusVillage}={}) {
+    const target=state||{};
+    const settings=target.settings||{
+      role:access?.role==='admin'?'puskesmas':(access?.role||'kader'),
+      puskesmas:'Puskesmas Tanjung Lago',
+      year:new Date().getFullYear(),
+      focusVillage:focusVillage||access?.village||'TANJUNGLAGO',
+      warningDays:30
+    };
+    settings.role=access?.role==='admin'?'puskesmas':(access?.role||settings.role||'kader');
+    if(focusVillage)settings.focusVillage=focusVillage;
+    target.settings=settings;
+    target.audit=target.audit||[];
+
+    for(const key of Object.keys(maps)) target[key]=(payload[key]||[]).map(row=>unpack(key,row));
+
+    const idls=payload.idls||[];
+    const byId=new Map(idls.map(x=>[x.child_id,x]));
+    target.children.forEach(c=>{
+      const i=byId.get(c.id);
+      if(i)Object.assign(c,{idlDate:i.idl_date||'',idlInputDate:i.input_date||'',idlPlace:i.service_place||'',idlPkm:i.forming_puskesmas||'',idlStatus:i.status||''});
+    });
+
+    const byVillage=new Map((payload.targets||[]).map(t=>[
+      t.village,
+      {name:t.village,...Object.fromEntries(Object.entries(t).filter(([k])=>!['village','updated_at'].includes(k)).map(([k,v])=>[camel(k),k==='verified'?v:(t.verified?v:0)]))}
+    ]));
+    (payload.villages||[]).forEach(v=>{if(v&&!byVillage.has(v))byVillage.set(v,{name:v})});
+    target.targets=[...byVillage.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    if(!target.targets.some(x=>x.name===target.settings.focusVillage) && target.targets.length)target.settings.focusVillage=target.targets[0].name;
+
+    target.scope=payload.scope||focusVillage||'all';
+    target.servicePlaces=[...new Set([
+      ...target.events.map(e=>e.servicePlace),
+      ...target.children.map(c=>c.posyandu)
+    ].filter(Boolean))].sort();
+    baseline=structuredClone(target);
+    window.SIMIDS_INITIAL=target;
+    return target;
+  }
+
+  async function load() {
+    await getAccess();
+    const focus=access.village||'TANJUNGLAGO';
+    const payload=await fetchScope(focus);
+    return applyPayload(null,payload,{focusVillage:payload.scope==='all'?focus:payload.scope});
+  }
+
+  async function loadScope(state,village) {
+    if(scopePromise)return scopePromise;
+    scopePromise=(async()=>{
+      if(!access)await getAccess();
+      const requested=village==='all'||village===''?null:village;
+      const payload=await fetchScope(requested);
+      const nextFocus=payload.scope==='all'?(state?.settings?.focusVillage||access.village||'TANJUNGLAGO'):payload.scope;
+      return applyPayload(state||window.SIMIDS_INITIAL,payload,{focusVillage:nextFocus});
+    })();
+    try{return await scopePromise}finally{scopePromise=null}
+  }
+
   async function save(state,action) {
     if(!navigator.onLine)throw new Error('Tidak ada koneksi. Data belum tersimpan; coba lagi setelah tersambung.');
     const key=actions[action];
     if(action==='save_settings') {
-      // Display filters only; permissions are always read from the access table.
       state.settings.role=access.role==='admin'?'puskesmas':access.role;
       baseline.settings=structuredClone(state.settings);return;
     }
     if(!key)throw new Error('Operasi ini tidak tersedia pada database produksi.');
-    const old=new Map(baseline[key].map(x=>[x.id,x]));
+    const old=new Map((baseline[key]||[]).map(x=>[x.id,x]));
     const changed=state[key].filter(x=>JSON.stringify(pack(key,x))!==JSON.stringify(old.has(x.id)?pack(key,old.get(x.id)):null));
     if(changed.length!==1)throw new Error('Simpan satu catatan setiap kali. Muat ulang sebelum mencoba lagi.');
     const row=changed[0],before=old.get(row.id), payload=pack(key,row);
@@ -95,6 +131,7 @@
     Object.assign(row,unpack(key,data));
     baseline[key]=structuredClone(state[key]);
   }
+
   async function login() {
     for(const key of ['simids_tanjung_lago_v6d','simids_tanjung_lago_v5','simids_tanjung_lago_v4','simids_tanjung_lago_v3','simids_tanjung_lago_v2'])localStorage.removeItem(key);
     const {data:{session}}=await client.auth.getSession();
@@ -107,11 +144,16 @@
       try {
         const {error}=await client.auth.signInWithPassword({email:document.getElementById('loginEmail').value.trim(),password:document.getElementById('loginPassword').value});
         if(error)throw new Error('Email atau kata sandi tidak sesuai, atau layanan belum bisa dihubungi.');
-        button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat data SiMIDS…';
+        button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat desa aktif…';
         resolve(await load());
       } catch(error){statusBox.textContent='';errorBox.textContent=error.message;await client.auth.signOut();button.disabled=false;button.textContent='Masuk';}
     }));
   }
+
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
-  window.SimidsBackend={login,load,save,rollback:()=>structuredClone(baseline),logout:async()=>{await client.auth.signOut();location.reload()}};
+  window.SimidsBackend={
+    login,load,loadScope,save,
+    rollback:()=>{const copy=structuredClone(baseline);window.SIMIDS_INITIAL=copy;return copy},
+    logout:async()=>{await client.auth.signOut();location.reload()}
+  };
 })();
