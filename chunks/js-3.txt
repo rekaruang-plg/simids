@@ -1,4 +1,16 @@
-rd"><b>${a}</b><small>${b}</small><div class="target-status"><span class="tag ${ok?'good':'warn'}">${ok?'Tercapai':'Belum tercapai'}</span></div></div>`).join('');
+etElementById('assessmentSummary').innerHTML=`<b>Evaluasi pre/post-test:</b> ${s.n} peserta • Rata-rata pre ${s.pre.toFixed(1)} • post ${s.post.toFixed(1)} • peningkatan <b>${s.improve.toFixed(1)}%</b>. Target proposal: peningkatan ≥30%.`}
+function eduTypeLabel(v){return({ibu:'Penyuluhan Ibu Balita',kader_risk:'Pelatihan Komunikasi Risiko',kader_digital:'Pelatihan Operasional Digital',peer:'Kelompok Peduli Imunisasi'})[v]||v}
+function validatedVaccineBy(childId,vaccineId,endDate='9999-12-31'){
+  return state.events.some(e=>e.childId===childId&&e.vaccineId===vaccineId&&e.validated!==false&&e.date<=endDate)
+}
+function renderDashboard(){
+  const kids=focusKids(),mr1=kids.filter(c=>validatedVaccineBy(c.id,'MR1')).length,mr2=kids.filter(c=>validatedVaccineBy(c.id,'MR2')).length,over=kids.map(risk).filter(r=>r.status==='overdue').length,unv=state.events.filter(e=>!e.validated).length,s=assessmentStats();
+  document.getElementById('programKpis').innerHTML=[['Anak terdaftar',kids.length],['MR-1',pct(mr1,kids.length)+'%'],['MR-2',pct(mr2,kids.length)+'%'],['Perlu sweeping',over],['Menunggu validasi',unv]].map(([l,v])=>`<div class="kpi-card"><b>${v}</b><span>${l}</span></div>`).join('');
+  renderCoverageTrend();
+  document.getElementById('coverageBars').innerHTML=['BCG','MR1','MR2','IBL'].map(id=>{const n=kids.filter(c=>validatedVaccineBy(c.id,id)).length,p=pct(n,kids.length);return `<div class="coverage-row"><div class="top"><span>${esc(getVaccine(id).label)}</span><b>${p}%</b></div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,p)}%"></div></div></div>`}).join('');
+  const eduParticipants=state.education.filter(e=>e.type==='ibu').reduce((s,e)=>s+Number(e.participants||0),0),trained=new Set(state.assessments.filter(a=>a.type==='kader'&&Number(a.post)>=70).map(a=>a.name)).size,swept=new Set(state.followups.filter(f=>['visited','immunized','scheduled'].includes(f.outcome)).map(f=>f.childId)).size;const ibuAssessed=state.assessments.filter(a=>a.type==='ibu').length;const dusunEdukasi=new Set(state.education.filter(e=>e.type==='ibu'&&e.hamlet).map(e=>e.hamlet)).size;const latest=state.events.filter(e=>e.validated!==false).map(e=>e.date).sort().at(-1);const delay=latest?diffDays(latest):999;
+  const targets=[['Pre-test ibu balita','≥90 responden',ibuAssessed>=90],['Penyuluhan ibu balita','≥100 peserta & 4 dusun',eduParticipants>=100&&dusunEdukasi>=4],['Kader lulus operasional','≥7 dari 8 kader, nilai ≥70',trained>=7],['Kohort masuk sistem','187 balita',kids.length>=187],['Sweeping MR-2','≥22 anak',swept>=22],['Peningkatan pengetahuan','≥30%',s.improve>=30],['Keterlambatan data','≤7 hari',delay<=7],['Cakupan MR-2 akhir','≥85%',pct(mr2,kids.length)>=85]];
+  document.getElementById('proposalTargets').innerHTML=targets.map(([a,b,ok])=>`<div class="target-card"><b>${a}</b><small>${b}</small><div class="target-status"><span class="tag ${ok?'good':'warn'}">${ok?'Tercapai':'Belum tercapai'}</span></div></div>`).join('');
   const q=state.events.filter(e=>!e.validated).slice(0,20);document.getElementById('validationQueue').innerHTML=q.length?q.map(e=>{const c=state.children.find(x=>x.id===e.childId);return `<div class="record-card"><div class="record-main"><b>${esc(c?.name||'-')} — ${esc(getVaccine(e.vaccineId).label)}</b><small>${fmtDate(e.date)} • ${esc(c?.hamlet||'')}</small></div><div class="record-actions"><button class="mini-btn good" data-validate="${e.id}">✓ Validasi</button></div></div>`}).join(''):'<div class="empty">Tidak ada data menunggu validasi.</div>'
 }
 function renderCoverageTrend(){
@@ -15,8 +27,21 @@ function targetKeys(){return ['pusdatinBirthMale','pusdatinBirthFemale','pusdati
 function aggregateTarget(items){const out={name:'TOTAL'};targetKeys().forEach(k=>out[k]=items.reduce((a,t)=>a+Number(t[k]||0),0));out.male=out.localSurvivingMale;out.female=out.localSurvivingFemale;return out}
 function getTarget(village){return village==='all'?aggregateTarget(state.targets):state.targets.find(t=>t.name===village)||normalizeTargets([{name:village,male:0,female:0}])[0]}
 function eventIdsFor(vaccineId,village,month,sex){
-  const year=Number(state.settings.year),sourceIds=vaccineId==='HB0_TOTAL'?['HB0_24','HB0_1_7']:[vaccineId],allowedChildren=new Set(state.children.filter(c=>(village==='all'||c.village===village)&&(!sex||c.sex===sex)).map(c=>c.id));
-  return new Set(state.events.filter(e=>e.validated!==false&&sourceIds.includes(e.vaccineId)&&allowedChildren.has(e.childId)&&new Date(e.date+'T00:00:00').getFullYear()===year&&new Date(e.date+'T00:00:00').getMonth()+1<=Number(month)).map(e=>e.childId))
+  const year=Number(state.settings.year),allowedChildren=state.children.filter(c=>(village==='all'||c.village===village)&&(!sex||c.sex===sex)),allowedIds=new Set(allowedChildren.map(c=>c.id));
+  const eligible=(e)=>e.validated!==false&&allowedIds.has(e.childId)&&new Date(e.date+'T00:00:00').getFullYear()===year&&new Date(e.date+'T00:00:00').getMonth()+1<=Number(month);
+  if(vaccineId==='HB0_TOTAL')return new Set(state.events.filter(e=>eligible(e)&&['HB0','HB0_24','HB0_1_7'].includes(e.vaccineId)).map(e=>e.childId));
+  if(vaccineId==='HB0_24'||vaccineId==='HB0_1_7'){
+    const want24=vaccineId==='HB0_24';
+    return new Set(state.events.filter(e=>{
+      if(!eligible(e))return false;
+      if(e.vaccineId===vaccineId)return true;
+      if(e.vaccineId!=='HB0')return false;
+      const c=state.children.find(x=>x.id===e.childId);if(!c?.dob)return false;
+      const days=Math.floor((new Date(e.date+'T00:00:00')-new Date(c.dob+'T00:00:00'))/86400000);
+      return want24?days===0:(days>=1&&days<=7);
+    }).map(e=>e.childId));
+  }
+  return new Set(state.events.filter(e=>eligible(e)&&e.vaccineId===vaccineId).map(e=>e.childId))
 }
 function vaccineReportStat(vaccineId,village,month,target=getTarget(village)){const m=eventIdsFor(vaccineId,village,month,'L').size,f=eventIdsFor(vaccineId,village,month,'P').size,n=m+f,dm=Number(target.localSurvivingMale||0),df=Number(target.localSurvivingFemale||0);return{m,f,n,pm:pct(m,dm),pf:pct(f,df),pn:pct(n,dm+df)}}
 function reportRows(village,month){const target=getTarget(village);return VACCINES.filter(v=>v.excel).map(v=>({label:v.label,...vaccineReportStat(v.id,village,month,target)}))}
@@ -33,14 +58,4 @@ function renderReport(){
   const total=state.followups.length,im=state.followups.filter(f=>f.outcome==='immunized').length,visited=state.followups.filter(f=>f.outcome==='visited').length;document.getElementById('followupReport').innerHTML=`Total catatan tindak lanjut: <b>${total}</b> • dikunjungi: <b>${visited}</b> • tercatat sudah diimunisasi setelah tindak lanjut: <b>${im}</b>.`;
 }
 function renderSettings(){
-  document.getElementById('settingPuskesmas').value=state.settings.puskesmas;document.getElementById('settingYear').value=state.settings.year;document.getElementById('settingFocusVillage').value=state.settings.focusVillage;document.getElementById('settingWarningDays').value=state.settings.warningDays;
-  document.getElementById('targetMaster').innerHTML=state.targets.map(t=>`<div class="target-master-card"><div class="target-master-head"><b>${esc(t.name)}</b><span>${t.localSurvivingMale+t.localSurvivingFemale} sasaran</span></div><div class="target-master-grid"><span><small>Pusdatin BBL</small><b>L ${t.pusdatinBirthMale} • P ${t.pusdatinBirthFemale}</b></span><span><small>Pusdatin SI</small><b>L ${t.pusdatinSurvivingMale} • P ${t.pusdatinSurvivingFemale}</b></span><span><small>Daerah BBL</small><b>L ${t.localBirthMale} • P ${t.localBirthFemale}</b></span><span><small>Daerah SI</small><b>L ${t.localSurvivingMale} • P ${t.localSurvivingFemale}</b></span></div></div>`).join('')
-}
-function renderAll(){['childVillage','eduVillage','assessmentVillage','settingFocusVillage'].forEach(id=>fillVillage(id));['childVillageFilter','riskVillageFilter','reportVillageFilter'].forEach(id=>fillVillage(id,true));fillChild();fillVaccines();renderRole();renderHome();renderChildren();renderSelectedChild();renderRecentEvents();renderFollowup();renderEducation();renderDashboard();renderReport();renderSettings();updateConnection();updateReminderBadges();refreshSearchableButtons();syncImmunizationPickerLabels();renderImmunizationReview()}
-function updateConnection(){const el=document.getElementById('connectionBadge');if(navigator.onLine){el.className='status-badge good';el.textContent='● Data tersimpan'}else{el.className='status-badge warn';el.textContent='● Mode offline'}}
-window.addEventListener('online',updateConnection);window.addEventListener('offline',updateConnection);
-
-// Pengingat otomatis di dalam website. Pesan WhatsApp hanya dibuka saat pengguna menekan tombol.
-function reminderItems(){return riskList().filter(x=>['overdue','due','mr2'].includes(x.r.status)).sort((a,b)=>{const order={overdue:0,due:1,mr2:2};const d=order[a.r.status]-order[b.r.status];if(d)return d;return String(a.r.due||'').localeCompare(String(b.r.due||''))})}
-function updateReminderBadges(){const n=reminderItems().length;['headerReminderCount','sideReminderCount','quickReminderCount','bottomReminderCount'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=n;el.style.display=n?'grid':'none'}})}
-function renderReminderCenter(){const items=reminderItems(),list=document.getElementById('reminderList'),title=document.getElementById('reminderTitle'),sub=document.getElementById('reminderSubtitle');if(!list)return;if(!items.length){title.textContent='Tidak ada pengingat mendesak';sub.textContent='Semua jadwal yang tercatat masih aman.';list.innerHTML='<div class="empty">✓ Tidak ada orang tua yang perlu dihubungi saat ini.</div>';return}const over=items.filter(x=>x.r.status==='overdue').length,due=items.filter(x=>x.r.status==='due').length,mr2=items.filter(x=>x.r.status==='mr2').length;title.textContent=`${items.length} anak perlu diperhatikan`;sub.textContent=`${over} jadwal lewat • ${due} jadwal dekat • ${mr2} MR-2 belum tercatat. Mulai dari yang paling atas.`;list.innerHTML=items.slice(0,5).map(({c,r})=>{const wa=waLink(c,r);return `<div class="reminder-item ${r.status==='overdue'?'urgent':''}"><div><b>${esc(c.name)}</b><small>${esc(c.parentName)} • ${
+  document.getEleme
