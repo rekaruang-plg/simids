@@ -114,6 +114,33 @@
     try{return await scopePromise}finally{scopePromise=null}
   }
 
+  async function loadChildrenPage({village='all',search='',page=1,pageSize=50}={}) {
+    if(!access)await getAccess();
+    const normalized=village==='all'||village===''?null:village;
+    const safePage=Math.max(1,Number(page)||1),safeSize=Math.min(100,Math.max(1,Number(pageSize)||50));
+    const {data,error}=await client.rpc('simids_children_page',{
+      p_village:normalized,
+      p_search:String(search||'').trim()||null,
+      p_page:safePage,
+      p_page_size:safeSize
+    });
+    if(error)throw error;
+    if(!data||typeof data!=='object')throw new Error('Halaman data anak tidak dapat dimuat.');
+    return {
+      children:(data.children||[]).map(row=>({
+        ...unpack('children',row),
+        immunizationCount:Number(row.immunization_count||0),
+        lastVaccine:row.last_vaccine||'',
+        lastImmunizationDate:row.last_immunization_date||''
+      })),
+      total:Number(data.total||0),
+      page:Number(data.page||safePage),
+      pageSize:Number(data.page_size||safeSize),
+      pages:Number(data.pages||1),
+      scope:data.scope||normalized||'all'
+    };
+  }
+
   async function adminUsers(action='list',payload={}) {
     if(!access)await getAccess();
     if(access.role!=='admin')throw new Error('Hanya administrator SiMIDS yang dapat mengelola akun.');
@@ -175,7 +202,7 @@
 
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
   window.SimidsBackend={
-    login,load,loadScope,save,adminUsers,
+    login,load,loadScope,loadChildrenPage,save,adminUsers,
     authRole:()=>access?.role||null,
     rollback:()=>{const copy=structuredClone(baseline);window.SIMIDS_INITIAL=copy;return copy},
     logout:async()=>{await client.auth.signOut();location.reload()}
