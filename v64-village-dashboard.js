@@ -2,7 +2,7 @@
   const URL='https://ntdqqzqgkylxixivkmrp.supabase.co';
   const KEY='sb_publishable_QeWv7cMl3JCrHWBN0m5cQA_IN0Tbk_w';
   const client=supabase.createClient(URL,KEY,{auth:{storage:sessionStorage,storageKey:'simids-auth',persistSession:true,autoRefreshToken:false,detectSessionInUrl:false}});
-  let initialized=false,busy=false,channel=null,refreshTimer=null,stale=false;
+  let initialized=false,busy=false,channel=null,refreshTimer=null,stale=false,officialVillages=[];
   const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const pct=n=>Number(n||0).toLocaleString('id-ID',{maximumFractionDigits:1});
   const fmtTime=v=>{const d=v?new Date(v):new Date();return Number.isNaN(d.getTime())?'baru saja':d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})};
@@ -41,9 +41,8 @@
   function fillFilter(){
     const el=document.getElementById('villageDashFilter');if(!el)return;
     const s=state(),auth=role(),current=el.value;
-    const villages=[...new Set((s.targets||[]).map(t=>t.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id'));
-    if(auth==='admin'||auth==='puskesmas')el.innerHTML='<option value="all">Semua desa</option>'+villages.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    else {const assigned=s.scope&&s.scope!=='all'?s.scope:(s.settings?.focusVillage||villages[0]||'');el.innerHTML=`<option value="${esc(assigned)}">${esc(assigned)}</option>`}
+    if(auth==='admin'||auth==='puskesmas')el.innerHTML='<option value="all">Semua desa</option>'+officialVillages.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    else {const assigned=s.scope&&s.scope!=='all'?s.scope:(s.settings?.focusVillage||'');el.innerHTML=`<option value="${esc(assigned)}">${esc(assigned)}</option>`}
     if([...el.options].some(o=>o.value===current))el.value=current;
   }
 
@@ -53,6 +52,8 @@
     const wrap=document.getElementById('page-village-dashboard');if(!wrap)return;
     const kpis=document.getElementById('villageDashKpis');
     const villages=data.villages||[],vaccines=data.vaccines||[];
+    const filter=document.getElementById('villageDashFilter');
+    if((filter?.value||'all')==='all'&&villages.length>1){officialVillages=[...new Set(villages.map(v=>v.village).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id'));fillFilter();if(filter)filter.value='all'}
     const high=villages.filter(v=>v.risk_level==='high').length;
     kpis.innerHTML=[['Anak dalam 12 desa',Number(data.total_children||0).toLocaleString('id-ID')],['Desa risiko tinggi',high],['Menunggu validasi',Number(data.pending_validation||0).toLocaleString('id-ID')],['Jenis imunisasi',vaccines.length]].map(([l,v])=>`<div class="village-kpi"><b>${v}</b><span>${l}</span></div>`).join('');
     const quality=document.getElementById('villageDashQuality'),unmapped=Number(data.unmapped_children||0);
@@ -95,9 +96,6 @@
     document.addEventListener('click',e=>{const nav=e.target.closest('[data-page],[data-jump]');const target=nav?.dataset.page||nav?.dataset.jump;if(target==='village-dashboard')setTimeout(()=>{fillFilter();startRealtime();if(stale||!document.querySelector('#villageDashKpis .village-kpi'))loadDashboard()},0)},true);
   }
 
-  function init(){
-    if(initialized)return;if(!injectPage()){setTimeout(init,80);return}
-    initialized=true;addStyle();fillFilter();bind();
-  }
+  function init(){if(initialized)return;if(!injectPage()){setTimeout(init,80);return}initialized=true;addStyle();fillFilter();bind()}
   init();
 })();
