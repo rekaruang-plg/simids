@@ -51,8 +51,8 @@
         <div class="welcome-card">
           <div class="welcome-copy">
             <span class="eyebrow" id="greetingText">SELAMAT DATANG</span>
-            <h1>Catat layanan Posyandu dengan mudah.</h1>
-            <p>Pilih kegiatan yang ingin dilakukan. Sistem akan menghitung rekap, risiko, dan pengingat secara otomatis.</p>
+            <h1>Catat data bayi & imunisasi dengan mudah.</h1>
+            <p>Ibu cukup mengisi data yang benar-benar diperlukan. Wilayah, tanggal input, rekap, risiko, dan pengingat dibantu otomatis oleh sistem.</p>
           </div>
           <div class="date-pill" id="todayText"></div>
         </div>
@@ -100,33 +100,37 @@
       </section>
 
       <section class="page" id="page-children">
-        <div class="page-title"><div><span class="section-kicker">DATA SASARAN</span><h1>Data Anak</h1><p>Cari data dengan nama anak atau nama orang tua.</p></div><button class="btn primary large" id="showChildFormBtn">＋ Tambah Anak Baru</button></div>
+        <div class="page-title"><div><span class="section-kicker">DATA SASARAN</span><h1>Data Anak</h1><p>Cari dengan nama anak, NIK, atau nama orang tua.</p></div><button class="btn primary large" id="showChildFormBtn">＋ Tambah Anak Baru</button></div>
         <div class="card add-form-panel" id="childFormCard">
           <div class="card-head"><div><span class="section-kicker">FORMULIR</span><h2 id="childFormTitle">Tambah Anak</h2><p>Isi data pokok terlebih dahulu. Tanda * wajib diisi.</p></div><span class="step-badge">Sekali isi</span></div>
           <form id="childForm" class="simple-form">
             <input type="hidden" id="childId" />
-            <div class="field full"><label>Nama anak *</label><input id="childName" required placeholder="Contoh: Alya Putri" autocomplete="off" /></div>
-            <div class="field"><label>Tanggal lahir *</label><input id="childDob" type="date" required /></div>
-            <div class="field"><label>Jenis kelamin *</label><select id="childSex"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
-            <div class="field"><label>Desa *</label><select id="childVillage" required></select></div>
-            <div class="field"><label>Dusun *</label><input id="childHamlet" required placeholder="Contoh: Dusun 1" /></div>
-            <div class="field"><label>Posyandu</label><input id="childPosyandu" placeholder="Contoh: Melati" /></div>
-            <div class="field"><label>NIK / ID lokal</label><input id="childNik" inputmode="numeric" placeholder="Boleh dikosongkan" /></div>
-            <div class="field full"><label>Nama ibu / orang tua *</label><input id="parentName" required placeholder="Nama ibu atau orang tua" /></div>
-            <div class="field full"><label>No. WhatsApp orang tua</label><input id="parentPhone" inputmode="tel" placeholder="Contoh: 08123456789" /></div>
-            <div class="field full"><label>Alamat / patokan rumah</label><textarea id="childAddress" rows="2" placeholder="Boleh diisi untuk memudahkan kunjungan"></textarea></div>
+            <div class="kohort-source-note full"><span>✓</span><div><b>Sesuai data kohort yang biasa dipakai</b><small>NIK, nama anak, tanggal lahir, jenis kelamin, orang tua, wilayah, dan Puskesmas tetap tersimpan. Kader tidak perlu melihat 66 kolom Excel.</small></div></div>
+            <div class="field full"><label>NIK Anak</label><input id="childNik" inputmode="numeric" placeholder="Ketik NIK bila sudah ada" autocomplete="off" /><small class="field-help">Boleh dikosongkan bila NIK belum tersedia.</small></div>
+            <div class="field full"><label>Nama Anak *</label><input id="childName" required placeholder="Contoh: Alya Putri" autocomplete="off" /></div>
+            <div class="field"><label>Tanggal Lahir Anak *</label><input id="childDob" type="date" required /></div>
+            <div class="field"><label>Jenis Kelamin Anak *</label><select id="childSex"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
+            <div class="field full"><label>Nama Orang Tua *</label><input id="parentName" required placeholder="Nama ibu atau orang tua" /></div>
+            <div class="field"><label>Kelurahan / Desa *</label><select id="childVillage" required></select></div>
+            <div class="field"><label>Dusun *</label><input id="childHamlet" required placeholder="Contoh: Dusun 1" /><small class="field-help">Dipakai untuk peta risiko dan sweeping.</small></div>
+            <div class="field full"><label>Posyandu / Pos Imunisasi Utama</label><select id="childPosyandu"></select><small class="field-help">Bisa dicari. Saat catat imunisasi, pilihan ini akan muncul otomatis.</small></div>
+            <div class="fixed-area full"><span>📍</span><div><b>Wilayah otomatis</b><small>Sumatera Selatan • Kab. Banyuasin • Kec. Tanjung Lago • Puskesmas Tanjung Lago</small></div></div>
+            <details class="optional-box full"><summary>＋ Kontak & alamat <span>(untuk pengingat/sweeping)</span></summary><div class="optional-grid">
+              <div class="field full"><label>No. WhatsApp orang tua</label><input id="parentPhone" inputmode="tel" placeholder="Contoh: 08123456789" /></div>
+              <div class="field full"><label>Alamat / patokan rumah</label><textarea id="childAddress" rows="2" placeholder="Boleh diisi untuk memudahkan kunjungan"></textarea></div>
+            </div></details>
             <div class="form-actions full"><button class="btn primary large" type="submit">✓ Simpan Data Anak</button><button class="btn secondary large" type="button" id="cancelChildEdit">Batal</button></div>
           </form>
         </div>
         <div class="card search-card">
-          <div class="card-head responsive"><div><span class="section-kicker">PENCARIAN</span><h2>Cari Anak</h2><p>Ketik sebagian nama saja.</p></div><div class="filter-row"><input id="childSearch" class="large-input search-input" placeholder="🔎 Ketik nama anak / ibu…" /><select id="childVillageFilter"></select></div></div>
+          <div class="card-head responsive"><div><span class="section-kicker">PENCARIAN</span><h2>Cari Anak</h2><p>Ketik sebagian nama saja.</p></div><div class="filter-row"><input id="childSearch" class="large-input search-input" placeholder="🔎 Nama anak / NIK / orang tua…" /><select id="childVillageFilter"></select></div></div>
           <div id="childrenCards" class="record-list"></div>
         </div>
       </section>
 
       <section class="page" id="page-immunization">
         <div class="page-title"><div><span class="section-kicker">PELAYANAN</span><h1>Catat Imunisasi</h1><p>Sentuh pilihan yang diperlukan. Tidak perlu menghafal kode atau mengetik banyak.</p></div></div>
-        <div class="simple-guide" aria-label="Petunjuk singkat"><span><b>1</b>Pilih anak</span><i>›</i><span><b>2</b>Pilih imunisasi</span><i>›</i><span><b>3</b>Periksa & simpan</span></div>
+        <div class="simple-guide" aria-label="Petunjuk singkat"><span><b>1</b>Pilih anak</span><i>›</i><span><b>2</b>Pilih imunisasi</span><i>›</i><span><b>3</b>Pos & simpan</span></div>
 
         <div class="card form-focus immunization-card">
           <form id="immunizationForm" class="simple-form" novalidate>
@@ -152,18 +156,8 @@
               <div class="date-easy-copy"><span class="date-icon">📅</span><div><label for="eventDate">Tanggal pelayanan *</label><small>Kalau pelayanan dilakukan sekarang, biarkan tanggal hari ini.</small></div></div>
               <div class="date-easy-actions"><input id="eventDate" type="date" required /><button class="btn secondary" id="useTodayBtn" type="button">Hari ini</button></div>
             </div>
-
-            <details class="optional-box full"><summary>＋ Data tambahan <span>(boleh dikosongkan)</span></summary><div class="optional-grid">
-              <div class="field"><label>Tanggal datang berikutnya</label><input id="eventNextDue" type="date" /><small class="field-help">Isi sesuai Buku KIA atau arahan bidan. Sistem tidak menebak jadwal medis.</small></div>
-              <div class="field"><label>Nama petugas</label><input id="eventProvider" placeholder="Boleh kosong" /></div>
-              <div class="field"><label>No. batch / keterangan</label><input id="eventBatch" placeholder="Boleh kosong" /></div>
-              <div class="field full"><label>Catatan</label><textarea id="eventNotes" rows="2" placeholder="Boleh kosong"></textarea></div>
-            </div></details>
-
-            <div class="full immunization-review" id="immunizationReview" aria-live="polite">
-              <div class="review-empty"><span>✓</span><div><b>Periksa sebelum simpan</b><small>Pilih anak dan imunisasi. Ringkasannya akan muncul di sini.</small></div></div>
+            <div class="field full choice-step service-place-step">
+              <div class="choice-step-head"><span class="step-number">3</span><div><label>Pos Imunisasi</label><small>Sesuai kolom “Pos Imunisasi” pada kohort. Otomatis memakai Posyandu anak bila sudah ada.</small></div></div>
+              <select id="eventServicePlace"></select>
             </div>
-            <div class="full info-box compact-info" id="validationInfo">Data yang Ibu simpan akan <b>diperiksa oleh bidan</b>.</div>
-            <div class="form-actions full sticky-save"><button class="btn primary xl" id="saveImmunizationBtn" type="submit" disabled>✓ Simpan Imunisasi</button></div>
-          </form>
-        <
+            <div class="auto-field-note full"><span 
