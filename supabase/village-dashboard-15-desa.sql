@@ -1,0 +1,14 @@
+-- Dashboard Imunisasi Desa memakai 15 desa resmi Kecamatan Tanjung Lago,
+-- bukan jumlah baris pada simids_targets. simids_targets adalah master sasaran laporan
+-- dan saat audit 2026-09-16 hanya memuat 12 desa.
+-- Migration production: fix_village_dashboard_15_official_villages
+-- Desa resmi: Tanjung Lago, Bunga Karang, Manggar Raya, Sumber Mekar Mukti,
+-- Bangun Sari, Banyu Urip, Mulya Sari, Telang Sari, Purwosari, Sri Menanti,
+-- Sebalik, Suka Tani, Suka Damai, Muara Sugih, Kuala Puntian.
+--
+-- Data anak yang residence-nya di luar Kecamatan Tanjung Lago tidak dipaksa
+-- dimapping ke desa lokal hanya karena Puskesmas = TANJUNG LAGO. Dashboard RPC
+-- memisahkan outside_subdistrict_children dan unknown_local_children.
+
+-- Definisi fungsi production dapat diperiksa dengan:
+-- select pg_get_functiondef('public.simids_village_immunization_dashboard(text)'::regprocedure);
