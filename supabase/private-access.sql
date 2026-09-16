@@ -27,9 +27,29 @@ returns boolean language sql stable security invoker set search_path='' as $$
     upper(btrim(p_village))=upper(btrim(simids_private.simids_user_village())))
  );
 $$;
+-- Avoid evaluating simids_children RLS again for every immunization row.
+-- The function runs with definer privileges but explicitly re-checks the signed-in
+-- user's active assignment and village before allowing access to a child.
 create or replace function simids_private.simids_child_accessible(p_child_id uuid)
-returns boolean language sql stable security invoker set search_path='' as $$
- select exists(select 1 from public.simids_children where id=p_child_id);
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists (
+   select 1
+   from public.simids_user_access ua
+   where ua.user_id=auth.uid()
+     and ua.active
+     and (
+       ua.role in ('admin','puskesmas')
+       or (
+         nullif(btrim(ua.village),'') is not null
+         and exists (
+           select 1
+           from public.simids_children c
+           where c.id=p_child_id
+             and upper(btrim(c.village))=upper(btrim(ua.village))
+         )
+       )
+     )
+ );
 $$;
 revoke all on all functions in schema simids_private from public, anon;
 grant execute on all functions in schema simids_private to authenticated, service_role;
