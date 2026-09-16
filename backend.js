@@ -13,6 +13,13 @@
     education: ['simids_education',{date:'activity_date',type:'activity_type'},'id,date,type,village,hamlet,participants,topic,notes'],
     assessments: ['simids_assessments',{name:'respondent_name',type:'respondent_type',date:'assessment_date',pre:'pre_score',post:'post_score'},'id,name,type,village,date,pre,post']
   };
+  const readColumns = {
+    children: 'id,name,dob,sex,village,hamlet,posyandu,nik,parent_name,phone,address,province,district,subdistrict,puskesmas,registered_at,updated_at',
+    events: 'id,child_id,vaccine_code,immunization_date,input_date,service_place,next_due_date,batch_number,notes,validated,provider,updated_at,created_at,source_import',
+    followups: 'id,child_id,followup_date,outcome,notes',
+    education: 'id,activity_date,activity_type,village,hamlet,participants,topic,notes',
+    assessments: 'id,respondent_name,respondent_type,village,assessment_date,pre_score,post_score'
+  };
   const actions = {save_child:'children',save_immunization:'events',validate_event:'events',save_followup:'followups',save_education:'education',save_assessment:'assessments'};
   let baseline, access;
   function unpack(key,row) {
@@ -27,11 +34,11 @@
     fields.split(',').forEach(k=>out[mapping[k]||k]=row[k]===''||row[k]===undefined?null:row[k]);
     return out;
   }
-  async function all(table,order='id') {
+  async function all(table,order='id',columns='*') {
     const rows=[];
     let cursor=null;
     for(;;) {
-      let query=client.from(table).select('*').order(order).limit(1000);
+      let query=client.from(table).select(columns).order(order).limit(1000);
       if(cursor!==null)query=query.gt(order,cursor);
       const {data,error}=await query;
       if(error)throw error;
@@ -44,18 +51,18 @@
   async function load() {
     const {data:{user},error:authError}=await client.auth.getUser();
     if(authError||!user)throw new Error('Silakan masuk kembali.');
-    const {data,error}=await client.from('simids_user_access').select('*').eq('user_id',user.id).eq('active',true).maybeSingle();
+    const {data,error}=await client.from('simids_user_access').select('user_id,role,village,active').eq('user_id',user.id).eq('active',true).maybeSingle();
     if(error)throw error;
     if(!data)throw new Error('Akun belum diberi akses SiMIDS. Hubungi administrator.');
     access=data;
     const keys=Object.keys(maps);
-    const result=await Promise.all(keys.map(k=>all(maps[k][0])));
+    const result=await Promise.all(keys.map(k=>all(maps[k][0],'id',readColumns[k])));
     const state={settings:{role:access.role==='admin'?'puskesmas':access.role,puskesmas:'Puskesmas Tanjung Lago',year:new Date().getFullYear(),focusVillage:access.village||'TANJUNGLAGO',warningDays:30},audit:[]};
     keys.forEach((key,i)=>state[key]=result[i].map(row=>unpack(key,row)));
-    const idls=await all('simids_idl','child_id');
+    const idls=await all('simids_idl','child_id','child_id,idl_date,input_date,service_place,forming_puskesmas,status');
     const byId=new Map(idls.map(x=>[x.child_id,x]));
     state.children.forEach(c=>{const i=byId.get(c.id);if(i)Object.assign(c,{idlDate:i.idl_date||'',idlInputDate:i.input_date||'',idlPlace:i.service_place||'',idlPkm:i.forming_puskesmas||'',idlStatus:i.status||''})});
-    const targets=await all('simids_targets','village');
+    const targets=await all('simids_targets','village','village,pusdatin_birth_male,pusdatin_birth_female,pusdatin_surviving_male,pusdatin_surviving_female,local_birth_male,local_birth_female,local_surviving_male,local_surviving_female,verified');
     const camel=k=>k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
     const byVillage=new Map(targets.map(t=>[t.village,{name:t.village,...Object.fromEntries(Object.entries(t).filter(([k])=>!['village','updated_at'].includes(k)).map(([k,v])=>[camel(k),k==='verified'?v:(t.verified?v:0)]))}]));
     state.children.forEach(c=>{if(!byVillage.has(c.village))byVillage.set(c.village,{name:c.village})});
@@ -92,16 +99,17 @@
     for(const key of ['simids_tanjung_lago_v6d','simids_tanjung_lago_v5','simids_tanjung_lago_v4','simids_tanjung_lago_v3','simids_tanjung_lago_v2'])localStorage.removeItem(key);
     const {data:{session}}=await client.auth.getSession();
     if(session) {try{return await load()}catch(e){await client.auth.signOut();}}
-    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email<input type="email" id="loginEmail" autocomplete="username" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginError" role="alert"></p><small>Data anak hanya dapat diakses petugas berizin.</small></form></main>`;
-    const style=document.createElement('style');style.textContent='#loginForm input,#loginForm button{box-sizing:border-box;display:block;width:100%;padding:14px;margin:8px 0 20px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}#loginForm button{background:#087f73;color:white;cursor:pointer}#loginError{color:#b91c1c}';document.head.appendChild(style);
+    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email<input type="email" id="loginEmail" autocomplete="username" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginStatus" aria-live="polite"></p><p id="loginError" role="alert"></p><small>Data anak hanya dapat diakses petugas berizin.</small></form></main>`;
+    const style=document.createElement('style');style.textContent='#loginForm input,#loginForm button{box-sizing:border-box;display:block;width:100%;padding:14px;margin:8px 0 20px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}#loginForm button{background:#087f73;color:white;cursor:pointer}#loginStatus{color:#64748b;min-height:1.2em}#loginError{color:#b91c1c}';document.head.appendChild(style);
     return new Promise(resolve=>document.getElementById('loginForm').addEventListener('submit',async e=>{
       e.preventDefault();const button=document.getElementById('loginSubmit');button.disabled=true;
-      const errorBox=document.getElementById('loginError');errorBox.textContent='';
+      const errorBox=document.getElementById('loginError'),statusBox=document.getElementById('loginStatus');errorBox.textContent='';statusBox.textContent='Memeriksa akun…';
       try {
         const {error}=await client.auth.signInWithPassword({email:document.getElementById('loginEmail').value.trim(),password:document.getElementById('loginPassword').value});
         if(error)throw new Error('Email atau kata sandi tidak sesuai, atau layanan belum bisa dihubungi.');
+        button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat data SiMIDS…';
         resolve(await load());
-      } catch(error){errorBox.textContent=error.message;await client.auth.signOut();button.disabled=false;}
+      } catch(error){statusBox.textContent='';errorBox.textContent=error.message;await client.auth.signOut();button.disabled=false;button.textContent='Masuk';}
     }));
   }
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
