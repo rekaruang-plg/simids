@@ -24,6 +24,17 @@
     if(key==='events') { out.createdAt=row.created_at?.slice(0,10)||out.date; out.sourceImport=row.source_import; }
     return out;
   }
+  function unpackChild(row) {
+    return {
+      ...unpack('children',row),
+      immunizationCount:Number(row.immunization_count||0),
+      lastVaccine:row.last_vaccine||'',
+      lastImmunizationDate:row.last_immunization_date||'',
+      hasMr2:row.has_mr2===true,
+      latestDueDate:row.latest_due_date||'',
+      unvalidatedCount:Number(row.unvalidated_count||0)
+    };
+  }
   function pack(key,row) {
     const [,mapping,fields]=maps[key], out={};
     fields.split(',').forEach(k=>out[mapping[k]||k]=row[k]===''||row[k]===undefined?null:row[k]);
@@ -53,6 +64,14 @@
     return data;
   }
 
+  async function fetchBootstrap(village) {
+    const normalized=village==='all'||village===''?null:village;
+    const {data,error}=await client.rpc('simids_load_bootstrap',{p_village:normalized});
+    if(error)throw error;
+    if(!data||typeof data!=='object')throw new Error('Data awal SiMIDS tidak dapat dimuat.');
+    return data;
+  }
+
   function applyPayload(state,payload,{focusVillage}={}) {
     const target=state||{};
     const settings=target.settings||{
@@ -68,7 +87,8 @@
     target.authRole=access?.role||'kader';
     target.audit=target.audit||[];
 
-    for(const key of Object.keys(maps)) target[key]=(payload[key]||[]).map(row=>unpack(key,row));
+    target.children=(payload.children||[]).map(unpackChild);
+    for(const key of Object.keys(maps)) if(key!=='children') target[key]=(payload[key]||[]).map(row=>unpack(key,row));
 
     const idls=payload.idls||[];
     const byId=new Map(idls.map(x=>[x.child_id,x]));
@@ -86,6 +106,9 @@
     if(!target.targets.some(x=>x.name===target.settings.focusVillage) && target.targets.length)target.settings.focusVillage=target.targets[0].name;
 
     target.scope=payload.scope||focusVillage||'all';
+    target.fullEvents=payload.full_events!==false;
+    target.unvalidatedCount=Number(payload.unvalidated_count ?? target.events.filter(e=>!e.validated).length);
+    target.loadedChildHistories={};
     target.servicePlaces=[...new Set([
       ...target.events.map(e=>e.servicePlace),
       ...target.children.map(c=>c.posyandu)
@@ -98,20 +121,68 @@
   async function load() {
     await getAccess();
     const focus=access.village||'TANJUNGLAGO';
-    const payload=await fetchScope(focus);
+    const payload=await fetchBootstrap(focus);
     return applyPayload(null,payload,{focusVillage:payload.scope==='all'?focus:payload.scope});
   }
 
+  // Normal navigation only loads the compact scope. Full immunization rows are opt-in.
   async function loadScope(state,village) {
+    if(scopePromise)return scopePromise;
+    scopePromise=(async()=>{
+      if(!access)await getAccess();
+      const requested=village==='all'||village===''?null:village;
+      const payload=await fetchBootstrap(requested);
+      const nextFocus=payload.scope==='all'?(state?.settings?.focusVillage||access.village||'TANJUNGLAGO'):payload.scope;
+      return applyPayload(state||window.SIMIDS_INITIAL,payload,{focusVillage:nextFocus});
+    })();
+    try{return await scopePromise}finally{scopePromise=null}
+  }
+
+  async function loadFullScope(state,village) {
     if(scopePromise)return scopePromise;
     scopePromise=(async()=>{
       if(!access)await getAccess();
       const requested=village==='all'||village===''?null:village;
       const payload=await fetchScope(requested);
       const nextFocus=payload.scope==='all'?(state?.settings?.focusVillage||access.village||'TANJUNGLAGO'):payload.scope;
-      return applyPayload(state||window.SIMIDS_INITIAL,payload,{focusVillage:nextFocus});
+      const next=applyPayload(state||window.SIMIDS_INITIAL,payload,{focusVillage:nextFocus});
+      next.fullEvents=true;
+      return next;
     })();
     try{return await scopePromise}finally{scopePromise=null}
+  }
+
+  async function loadChildHistory(state,childId) {
+    if(!childId)return [];
+    const target=state||window.SIMIDS_INITIAL;
+    if(target?.fullEvents||target?.loadedChildHistories?.[childId]) return (target?.events||[]).filter(e=>e.childId===childId);
+    if(!access)await getAccess();
+    const {data,error}=await client.from('simids_immunizations')
+      .select('id,child_id,vaccine_code,immunization_date,input_date,service_place,next_due_date,batch_number,notes,validated,provider,source_import,created_at,updated_at')
+      .eq('child_id',childId)
+      .order('immunization_date',{ascending:false});
+    if(error)throw error;
+    const rows=(data||[]).map(row=>unpack('events',row));
+    const others=(target.events||[]).filter(e=>e.childId!==childId);
+    target.events=[...others,...rows];
+    target.loadedChildHistories=target.loadedChildHistories||{};
+    target.loadedChildHistories[childId]=true;
+    const child=(target.children||[]).find(c=>c.id===childId);
+    if(child){
+      const sorted=[...rows].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+      child.immunizationCount=rows.length;
+      child.lastVaccine=sorted[0]?.vaccineId||child.lastVaccine||'';
+      child.lastImmunizationDate=sorted[0]?.date||child.lastImmunizationDate||'';
+      child.hasMr2=rows.some(e=>e.vaccineId==='MR2');
+      child.latestDueDate=sorted.find(e=>e.nextDueDate)?.nextDueDate||'';
+      child.unvalidatedCount=rows.filter(e=>!e.validated).length;
+    }
+    target.servicePlaces=[...new Set([...(target.servicePlaces||[]),...rows.map(e=>e.servicePlace)].filter(Boolean))].sort();
+    baseline.events=structuredClone(target.events);
+    baseline.children=structuredClone(target.children);
+    baseline.loadedChildHistories=structuredClone(target.loadedChildHistories);
+    window.SIMIDS_INITIAL=target;
+    return rows;
   }
 
   async function loadChildrenPage({village='all',search='',page=1,pageSize=50}={}) {
@@ -119,26 +190,41 @@
     const normalized=village==='all'||village===''?null:village;
     const safePage=Math.max(1,Number(page)||1),safeSize=Math.min(100,Math.max(1,Number(pageSize)||50));
     const {data,error}=await client.rpc('simids_children_page',{
-      p_village:normalized,
-      p_search:String(search||'').trim()||null,
-      p_page:safePage,
-      p_page_size:safeSize
+      p_village:normalized,p_search:String(search||'').trim()||null,p_page:safePage,p_page_size:safeSize
     });
     if(error)throw error;
     if(!data||typeof data!=='object')throw new Error('Halaman data anak tidak dapat dimuat.');
     return {
-      children:(data.children||[]).map(row=>({
-        ...unpack('children',row),
-        immunizationCount:Number(row.immunization_count||0),
-        lastVaccine:row.last_vaccine||'',
-        lastImmunizationDate:row.last_immunization_date||''
-      })),
-      total:Number(data.total||0),
-      page:Number(data.page||safePage),
-      pageSize:Number(data.page_size||safeSize),
-      pages:Number(data.pages||1),
-      scope:data.scope||normalized||'all'
+      children:(data.children||[]).map(row=>({...unpackChild(row),immunizationCount:Number(row.immunization_count||0),lastVaccine:row.last_vaccine||'',lastImmunizationDate:row.last_immunization_date||''})),
+      total:Number(data.total||0),page:Number(data.page||safePage),pageSize:Number(data.page_size||safeSize),pages:Number(data.pages||1),scope:data.scope||normalized||'all'
     };
+  }
+
+  async function reportSummary({village='all',year=new Date().getFullYear(),month=12}={}) {
+    if(!access)await getAccess();
+    const normalized=village==='all'||village===''?null:village;
+    const {data,error}=await client.rpc('simids_report_summary',{p_village:normalized,p_year:Number(year),p_month:Number(month)});
+    if(error)throw error;
+    return data||{};
+  }
+
+  async function dashboardSummary({village='',vaccine='MR2',warningDays=30}={}) {
+    if(!access)await getAccess();
+    const normalized=village==='all'||village===''?null:village;
+    const {data,error}=await client.rpc('simids_dashboard_summary',{p_village:normalized,p_vaccine:String(vaccine||'MR2'),p_warning_days:Number(warningDays)||30});
+    if(error)throw error;
+    return data||{};
+  }
+
+  async function followupPage({village='all',status='all',warningDays=30,page=1,pageSize=50}={}) {
+    if(!access)await getAccess();
+    const normalized=village==='all'||village===''?null:village;
+    const {data,error}=await client.rpc('simids_followup_page',{
+      p_village:normalized,p_status:status==='all'?null:String(status||''),p_warning_days:Number(warningDays)||30,
+      p_page:Math.max(1,Number(page)||1),p_page_size:Math.min(100,Math.max(1,Number(pageSize)||50))
+    });
+    if(error)throw error;
+    return data||{};
   }
 
   async function adminUsers(action='list',payload={}) {
@@ -147,10 +233,7 @@
     const {data,error}=await client.functions.invoke('simids-admin-users',{body:{action,...payload}});
     if(error) {
       let message=error.message||'Permintaan pengelolaan akun gagal.';
-      try {
-        const details=await error.context?.json?.();
-        if(details?.error)message=details.error;
-      } catch {}
+      try { const details=await error.context?.json?.(); if(details?.error)message=details.error; } catch {}
       throw new Error(message);
     }
     if(data?.error)throw new Error(data.error);
@@ -160,10 +243,7 @@
   async function save(state,action) {
     if(!navigator.onLine)throw new Error('Tidak ada koneksi. Data belum tersimpan; coba lagi setelah tersambung.');
     const key=actions[action];
-    if(action==='save_settings') {
-      state.settings.role=access.role==='admin'?'puskesmas':access.role;
-      baseline.settings=structuredClone(state.settings);return;
-    }
+    if(action==='save_settings') { state.settings.role=access.role==='admin'?'puskesmas':access.role; baseline.settings=structuredClone(state.settings);return; }
     if(!key)throw new Error('Operasi ini tidak tersedia pada database produksi.');
     const old=new Map((baseline[key]||[]).map(x=>[x.id,x]));
     const changed=state[key].filter(x=>JSON.stringify(pack(key,x))!==JSON.stringify(old.has(x.id)?pack(key,old.get(x.id)):null));
@@ -179,6 +259,15 @@
     if(error)throw new Error(error.code==='23505'?'Catatan ini sudah ada. Muat ulang data sebelum mencoba lagi.':error.code==='PGRST116'?'Data berubah di perangkat lain atau akses ditolak. Muat ulang dahulu.':error.message);
     Object.assign(row,unpack(key,data));
     baseline[key]=structuredClone(state[key]);
+    if(key==='events'){
+      const child=state.children.find(c=>c.id===row.childId);
+      if(child){
+        const ev=state.events.filter(e=>e.childId===row.childId),sorted=[...ev].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+        child.immunizationCount=ev.length;child.lastVaccine=sorted[0]?.vaccineId||'';child.lastImmunizationDate=sorted[0]?.date||'';
+        child.hasMr2=ev.some(e=>e.vaccineId==='MR2')||child.hasMr2;child.latestDueDate=sorted.find(e=>e.nextDueDate)?.nextDueDate||child.latestDueDate||'';
+        child.unvalidatedCount=ev.filter(e=>!e.validated).length;baseline.children=structuredClone(state.children);
+      }
+    }
   }
 
   async function login() {
@@ -194,15 +283,14 @@
         const identity=document.getElementById('loginEmail').value;
         const {error}=await client.auth.signInWithPassword({email:loginEmail(identity),password:document.getElementById('loginPassword').value});
         if(error)throw new Error('Username/email atau kata sandi tidak sesuai, atau layanan belum bisa dihubungi.');
-        button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat desa aktif…';
-        resolve(await load());
+        button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat ringkasan desa…';resolve(await load());
       } catch(error){statusBox.textContent='';errorBox.textContent=error.message;await client.auth.signOut();button.disabled=false;button.textContent='Masuk';}
     }));
   }
 
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
   window.SimidsBackend={
-    login,load,loadScope,loadChildrenPage,save,adminUsers,
+    login,load,loadScope,loadFullScope,loadChildHistory,loadChildrenPage,reportSummary,dashboardSummary,followupPage,save,adminUsers,
     authRole:()=>access?.role||null,
     rollback:()=>{const copy=structuredClone(baseline);window.SIMIDS_INITIAL=copy;return copy},
     logout:async()=>{await client.auth.signOut();location.reload()}
