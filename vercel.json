@@ -3,12 +3,20 @@
   "trailingSlash": false,
   "headers": [
     {
-      "source": "/loader.js",
-      "headers": [{"key": "Cache-Control", "value": "no-store"}]
+      "source": "/index.html",
+      "headers": [{"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"}]
+    },
+    {
+      "source": "/vendor/(.*)",
+      "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
     },
     {
       "source": "/chunks/(.*)",
-      "headers": [{"key": "Cache-Control", "value": "no-store"}]
+      "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+    },
+    {
+      "source": "/(app|backend|loader|v61-patch|v62-history-patch|v63-low-bandwidth)\\.js",
+      "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
     }
   ]
 }
