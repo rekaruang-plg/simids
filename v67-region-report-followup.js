@@ -1,8 +1,8 @@
 (()=>{
-  const URL='https://ntdqqzqgkylxixivkmrp.supabase.co';
+  const SUPABASE_URL='https://ntdqqzqgkylxixivkmrp.supabase.co';
   const KEY='sb_publishable_QeWv7cMl3JCrHWBN0m5cQA_IN0Tbk_w';
-  let client=null,initialized=false,reportBusy=false,reportPage=1,lastData=null;
-  const getClient=()=>client||(client=supabase.createClient(URL,KEY,{auth:{storage:sessionStorage,storageKey:'simids-auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}));
+  let client=null,initialized=false,reportBusy=false,reportPage=1;
+  const getClient=()=>client||(client=supabase.createClient(SUPABASE_URL,KEY,{auth:{storage:sessionStorage,storageKey:'simids-auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}}));
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num=n=>Number(n||0).toLocaleString('id-ID');
   const state=()=>window.SIMIDS_INITIAL||{};
@@ -16,16 +16,11 @@
     `;document.head.appendChild(s);
   }
 
-  function hideProgramDashboard(){
-    document.querySelectorAll('[data-page="dashboard"]').forEach(el=>el.classList.add('hide-program-dashboard'));
-  }
+  function hideProgramDashboard(){document.querySelectorAll('[data-page="dashboard"]').forEach(el=>el.classList.add('hide-program-dashboard'))}
 
   function fillFollowupVillage(){
     const sel=document.getElementById('riskVillageFilter');if(!sel)return;
-    const current=sel.value;
-    const s=state();
-    const villages=[...new Set((s.targets||[]).map(x=>x.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id'));
-    const role=s.authRole||s.settings?.role||'kader';
+    const current=sel.value,s=state(),villages=[...new Set((s.targets||[]).map(x=>x.name).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'id')),role=s.authRole||s.settings?.role||'kader';
     if(role==='admin'||role==='puskesmas')sel.innerHTML='<option value="all">Semua desa</option>'+villages.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
     else {const assigned=s.scope&&s.scope!=='all'?s.scope:s.settings?.focusVillage||villages[0]||'';sel.innerHTML=`<option value="${esc(assigned)}">${esc(assigned)}</option>`}
     if([...sel.options].some(o=>o.value===current))sel.value=current;else if([...sel.options].some(o=>o.value===(s.scope||'')))sel.value=s.scope;
@@ -36,8 +31,7 @@
     const title=page.querySelector('.page-title');if(title)title.innerHTML='<div><span class="section-kicker">PENGINGAT DESA</span><h1>Pengingat & Tindak Lanjut</h1><p>Pilih desa untuk melihat anak yang perlu dihubungi dan mencatat hasil tindak lanjut.</p></div>';
     const card=page.querySelector('.risk-map-card');
     if(card&&!card.dataset.villagePatched){
-      const oldVillage=document.getElementById('riskVillageFilter')?.value||'';
-      const oldStatus=document.getElementById('riskStatusFilter')?.value||'all';
+      const oldVillage=document.getElementById('riskVillageFilter')?.value||'',oldStatus=document.getElementById('riskStatusFilter')?.value||'all';
       card.dataset.villagePatched='1';
       card.innerHTML=`<div class="card-head responsive"><div><span class="section-kicker">FILTER DESA</span><h2>Daftar Pengingat per Desa</h2><p>Tidak memakai peta dusun. Pilih desa dan status pengingat.</p></div><div class="filter-row"><select id="riskVillageFilter"></select><select id="riskStatusFilter"><option value="all">Semua pengingat</option><option value="overdue">Jadwal sudah lewat</option><option value="due">Jadwal dekat</option><option value="mr2">MR-2 belum tercatat</option></select></div></div><div class="followup-village-note">Daftar anak dimuat bertahap 50 anak per halaman agar tetap ringan pada koneksi lambat.</div>`;
       fillFollowupVillage();
@@ -65,7 +59,6 @@
   function setOptions(id,items,label,value){const el=document.getElementById(id);if(!el)return;el.innerHTML=`<option value="">${label}</option>`+(items||[]).map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if([...el.options].some(o=>o.value===value))el.value=value}
 
   function renderReport(data,keep={}){
-    lastData=data;
     const f=data.filters||{};
     setOptions('regionProvince',f.provinces,'Semua provinsi',keep.province||'');
     setOptions('regionDistrict',f.districts,'Semua kabupaten/kota',keep.district||'');
@@ -99,7 +92,7 @@
       const head=['Nama Anak','NIK','Tanggal Lahir','JK','Nama Orang Tua','Telepon','Alamat','Provinsi','Kabupaten/Kota','Kecamatan','Desa','Puskesmas','Posyandu'];
       const rows=all.map(c=>[c.name,c.nik,c.dob,c.sex,c.parent_name,c.phone,c.address,c.province,c.district,c.subdistrict,c.village,c.puskesmas,c.posyandu]);
       const csv='\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
-      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`laporan-data-anak-per-daerah-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=window.URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`laporan-data-anak-per-daerah-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>window.URL.revokeObjectURL(url),1000);
     }catch(e){alert('Ekspor gagal: '+(e.message||e))}finally{if(btn){btn.disabled=false;btn.textContent='⬇ Unduh CSV'}}
   }
 
@@ -125,7 +118,6 @@
     if(initialized)return;
     if(!window.SIMIDS_READY||!document.getElementById('page-report')){setTimeout(init,100);return}
     initialized=true;addStyle();hideProgramDashboard();patchFollowup();reportTemplate();bind();
-    // The legacy report request is no longer needed because this page now uses the region RPC.
     if(window.SimidsBackend?.reportSummary)window.SimidsBackend.reportSummary=async()=>({counts:[]});
     if(document.getElementById('page-report')?.classList.contains('active'))loadReport(1);
   }
