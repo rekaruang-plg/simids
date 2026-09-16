@@ -14,6 +14,7 @@
     assessments: ['simids_assessments',{name:'respondent_name',type:'respondent_type',date:'assessment_date',pre:'pre_score',post:'post_score'},'id,name,type,village,date,pre,post']
   };
   const actions = {save_child:'children',save_immunization:'events',validate_event:'events',save_followup:'followups',save_education:'education',save_assessment:'assessments'};
+  const INTERNAL_LOGIN_DOMAIN='simids.example.com';
   let baseline, access, scopePromise=null;
 
   function unpack(key,row) {
@@ -29,6 +30,10 @@
     return out;
   }
   const camel=k=>k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
+  const loginEmail=value=>{
+    const id=String(value||'').trim().toLowerCase();
+    return id.includes('@')?id:`${id}@${INTERNAL_LOGIN_DOMAIN}`;
+  };
 
   async function getAccess() {
     const {data:{user},error:authError}=await client.auth.getUser();
@@ -60,6 +65,7 @@
     settings.role=access?.role==='admin'?'puskesmas':(access?.role||settings.role||'kader');
     if(focusVillage)settings.focusVillage=focusVillage;
     target.settings=settings;
+    target.authRole=access?.role||'kader';
     target.audit=target.audit||[];
 
     for(const key of Object.keys(maps)) target[key]=(payload[key]||[]).map(row=>unpack(key,row));
@@ -108,6 +114,22 @@
     try{return await scopePromise}finally{scopePromise=null}
   }
 
+  async function adminUsers(action='list',payload={}) {
+    if(!access)await getAccess();
+    if(access.role!=='admin')throw new Error('Hanya administrator SiMIDS yang dapat mengelola akun.');
+    const {data,error}=await client.functions.invoke('simids-admin-users',{body:{action,...payload}});
+    if(error) {
+      let message=error.message||'Permintaan pengelolaan akun gagal.';
+      try {
+        const details=await error.context?.json?.();
+        if(details?.error)message=details.error;
+      } catch {}
+      throw new Error(message);
+    }
+    if(data?.error)throw new Error(data.error);
+    return data||{};
+  }
+
   async function save(state,action) {
     if(!navigator.onLine)throw new Error('Tidak ada koneksi. Data belum tersimpan; coba lagi setelah tersambung.');
     const key=actions[action];
@@ -136,14 +158,15 @@
     for(const key of ['simids_tanjung_lago_v6d','simids_tanjung_lago_v5','simids_tanjung_lago_v4','simids_tanjung_lago_v3','simids_tanjung_lago_v2'])localStorage.removeItem(key);
     const {data:{session}}=await client.auth.getSession();
     if(session) {try{return await load()}catch(e){await client.auth.signOut();}}
-    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email<input type="email" id="loginEmail" autocomplete="username" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginStatus" aria-live="polite"></p><p id="loginError" role="alert"></p><small>Data anak hanya dapat diakses petugas berizin.</small></form></main>`;
+    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email / Username<input type="text" id="loginEmail" autocomplete="username" placeholder="contoh: kader.tanjung1" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginStatus" aria-live="polite"></p><p id="loginError" role="alert"></p><small>Akun petugas internal tidak memerlukan konfirmasi email.</small></form></main>`;
     const style=document.createElement('style');style.textContent='#loginForm input,#loginForm button{box-sizing:border-box;display:block;width:100%;padding:14px;margin:8px 0 20px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}#loginForm button{background:#087f73;color:white;cursor:pointer}#loginStatus{color:#64748b;min-height:1.2em}#loginError{color:#b91c1c}';document.head.appendChild(style);
     return new Promise(resolve=>document.getElementById('loginForm').addEventListener('submit',async e=>{
       e.preventDefault();const button=document.getElementById('loginSubmit');button.disabled=true;
       const errorBox=document.getElementById('loginError'),statusBox=document.getElementById('loginStatus');errorBox.textContent='';statusBox.textContent='Memeriksa akun…';
       try {
-        const {error}=await client.auth.signInWithPassword({email:document.getElementById('loginEmail').value.trim(),password:document.getElementById('loginPassword').value});
-        if(error)throw new Error('Email atau kata sandi tidak sesuai, atau layanan belum bisa dihubungi.');
+        const identity=document.getElementById('loginEmail').value;
+        const {error}=await client.auth.signInWithPassword({email:loginEmail(identity),password:document.getElementById('loginPassword').value});
+        if(error)throw new Error('Username/email atau kata sandi tidak sesuai, atau layanan belum bisa dihubungi.');
         button.textContent='Memuat…';statusBox.textContent='Login berhasil. Memuat desa aktif…';
         resolve(await load());
       } catch(error){statusBox.textContent='';errorBox.textContent=error.message;await client.auth.signOut();button.disabled=false;button.textContent='Masuk';}
@@ -152,7 +175,8 @@
 
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
   window.SimidsBackend={
-    login,load,loadScope,save,
+    login,load,loadScope,save,adminUsers,
+    authRole:()=>access?.role||null,
     rollback:()=>{const copy=structuredClone(baseline);window.SIMIDS_INITIAL=copy;return copy},
     logout:async()=>{await client.auth.signOut();location.reload()}
   };
