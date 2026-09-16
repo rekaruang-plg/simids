@@ -1,4 +1,18 @@
-/div>
+>⚡</span><div><b>Tanggal input dicatat otomatis</b><small>Ibu tidak perlu mengisi “Tanggal Input”. Sistem menyimpan tanggal saat data dimasukkan.</small></div></div>
+
+            <details class="optional-box full"><summary>＋ Data tambahan <span>(boleh dikosongkan)</span></summary><div class="optional-grid">
+              <div class="field"><label>Tanggal datang berikutnya</label><input id="eventNextDue" type="date" /><small class="field-help">Isi sesuai Buku KIA atau arahan bidan. Sistem tidak menebak jadwal medis.</small></div>
+              <div class="field"><label>No. batch / keterangan</label><input id="eventBatch" placeholder="Boleh kosong" /></div>
+              <div class="field full"><label>Catatan</label><textarea id="eventNotes" rows="2" placeholder="Boleh kosong"></textarea></div>
+            </div></details>
+
+            <div class="full immunization-review" id="immunizationReview" aria-live="polite">
+              <div class="review-empty"><span>✓</span><div><b>Periksa sebelum simpan</b><small>Pilih anak dan imunisasi. Ringkasannya akan muncul di sini.</small></div></div>
+            </div>
+            <div class="full info-box compact-info" id="validationInfo">Data yang Ibu simpan akan <b>diperiksa oleh bidan</b>.</div>
+            <div class="form-actions full sticky-save"><button class="btn primary xl" id="saveImmunizationBtn" type="submit" disabled>✓ Simpan Imunisasi</button></div>
+          </form>
+        </div>
 
         <div class="success-card" id="immunizationSuccess" hidden></div>
         <div class="card"><div class="card-head"><div><span class="section-kicker">TERBARU</span><h2>Input Terakhir</h2><p>Gunakan bagian ini untuk mengecek bahwa data sudah masuk.</p></div></div><div id="recentEvents" class="record-list"></div></div>
@@ -64,26 +78,11 @@
       <section class="page" id="page-report">
         <div class="page-title"><div><span class="section-kicker">REKAP</span><h1>Laporan</h1><p>Rekap otomatis dari input kader. Tampilan ringkas untuk dibaca, format Excel untuk pelaporan.</p></div></div>
         <div class="card report-control-card"><div class="card-head responsive"><div><span class="section-kicker">FILTER LAPORAN</span><h2>Laporan Kumulatif Imunisasi</h2><p>Persentase dihitung dari master sasaran dan hanya memakai data yang sudah divalidasi.</p></div><div class="filter-row"><select id="reportVillageFilter"></select><select id="reportMonthFilter"></select><button class="btn secondary" id="exportReportBtn">⬇ Unduh Format Excel (CSV)</button><button class="btn secondary" onclick="window.print()">🖨 Cetak</button></div></div><div id="reportMeta" class="report-meta"></div><div id="reportTargetSummary" class="report-target-grid"></div></div>
+        <div class="card kohort-export-card"><div class="card-head responsive"><div><span class="section-kicker">KOHORT INDIVIDU</span><h2>Data Individu Bayi</h2><p>Ekspor mengikuti struktur data yang biasa digunakan: identitas anak, tanggal imunisasi, tanggal input, dan Pos Imunisasi.</p></div><div class="filter-row"><button class="btn primary" id="exportIndividualCsvBtn">⬇ Unduh Kohort Individu (CSV)</button></div></div><div class="source-column-summary"><b>Yang kader isi:</b> data anak + pelayanan imunisasi. <b>Yang sistem isi otomatis:</b> tanggal input, wilayah tetap, dan rekap.</div></div>
         <div class="card"><div class="card-head"><div><span class="section-kicker">MUDAH DIBACA</span><h2>Ringkasan per Imunisasi</h2><p>Dipakai untuk memeriksa angka dengan cepat sebelum laporan dikirim.</p></div></div><div class="table-wrap"><table><thead><tr><th>Imunisasi</th><th>L</th><th>% L</th><th>P</th><th>% P</th><th>Jumlah</th><th>% Total</th></tr></thead><tbody id="reportTableBody"></tbody></table></div></div>
         <details class="card excel-report-details">
           <summary><span><span class="section-kicker">FORMAT SUMBER</span><b>Preview Format Excel Tanjung Lago</b><small>Kolom mengikuti struktur file report: Sasaran Pusdatin, Sasaran Daerah, lalu seluruh hasil imunisasi L/P/Jumlah dan persentase.</small></span><i>⌄</i></summary>
           <div class="excel-scroll-hint">Geser tabel ke kanan untuk melihat semua jenis imunisasi.</div>
           <div class="table-wrap excel-table-wrap"><table id="excelReportTable" class="excel-table"></table></div>
         </details>
-        <div class="card"><div class="card-head"><div><h2>Laporan Tindak Lanjut</h2><p>Hasil sweeping yang dicatat kader.</p></div></div><div id="followupReport" class="summary-panel"></div></div>
-      </section>
-
-      <section class="page" id="page-settings">
-        <div class="page-title"><div><span class="section-kicker">ADMIN</span><h1>Pengaturan</h1><p>Bagian ini bukan untuk pekerjaan kader sehari-hari.</p></div></div>
-        <div class="two-col">
-          <div class="card"><div class="card-head"><div><h2>Identitas Sistem</h2></div></div><form id="settingsForm" class="simple-form"><div class="field full"><label>Puskesmas</label><input id="settingPuskesmas" /></div><div class="field"><label>Tahun laporan</label><input id="settingYear" type="number" /></div><div class="field"><label>Desa fokus</label><select id="settingFocusVillage"></select></div><div class="field"><label>Pengingat jadwal dekat (hari)</label><input id="settingWarningDays" type="number" min="1" max="90" /></div><div class="form-actions full"><button class="btn primary" type="submit">Simpan Pengaturan</button></div></form></div>
-          <div class="card"><div class="card-head"><div><h2>Backup Data</h2><p>Prototype V5 menyimpan data di perangkat ini.</p></div></div><div class="stack-actions"><button class="btn secondary" id="downloadBackupBtn">Unduh Backup JSON</button><label class="upload-btn">Impor Backup JSON<input type="file" id="importBackupInput" accept="application/json" /></label><button class="btn danger" id="resetDemoBtn">Reset Data Demo</button></div><div class="info-box">Versi produksi menggunakan database bersama agar kader, bidan, dan Puskesmas melihat data yang sama.</div></div>
-        </div>
-        <div class="card"><div class="card-head"><div><h2>Master Sasaran per Desa</h2><p>Struktur mengikuti empat kelompok sasaran pada report Excel: Pusdatin BBL/SI dan Sasaran Daerah BBL/SI.</p></div></div><div id="targetMaster" class="record-list"></div></div>
-      </section>
-    </main>
-  </div>
-
-  <nav class="mobile-bottom-nav" aria-label="Navigasi cepat ponsel">
-    <button class="bottom-nav-btn active" data-page="home"><span>⌂</span><b>Beranda</b></button>
-    <button 
+        <div class="card"><div class="card-head"><div><h2>Laporan Tindak Lanjut</h2><p>Hasil sweeping yang dicatat kader.</p></div></div><d
