@@ -53,7 +53,7 @@
       method:'POST',
       headers:await authHeaders({'Upload-Length':String(file.size),'Upload-Metadata':metadata})
     });
-    if(!res.ok)throw new Error(`Gagal memulai upload video/file (HTTP ${res.status}).`);
+    if(!res.ok){const body=await res.text().catch(()=>'' );if(res.status===413)throw new Error('Ukuran file melewati batas Storage Supabase proyek saat ini. Proyek ini masih Free, sehingga batas global maksimal 50 MB. Untuk file hingga 300 MB perlu upgrade Supabase ke Pro lalu set Global file size limit minimal 300 MB.');throw new Error(`Gagal memulai upload video/file (HTTP ${res.status})${body?': '+body.trim():''}.`);}
     const location=res.headers.get('Location');
     if(!location)throw new Error('Server upload tidak mengembalikan alamat lanjutan.');
     const url=new URL(location,TUS_ENDPOINT+'/').href;
