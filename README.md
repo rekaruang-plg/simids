@@ -45,3 +45,35 @@ Penyimpanan menunggu konfirmasi server dan memperbarui satu catatan yang berubah
 Arsip impor sengaja memakai RLS tanpa kebijakan pengguna: hanya administrator database/service-role dapat mengaksesnya. Peringatan advisor pada aplikasi lain dalam project bersama tidak diubah oleh integrasi ini.
 
 Uji browser dengan fixture sintetis: `node tests/browser.cjs` (memerlukan Playwright dan Chromium; opsional `CHROMIUM_PATH`). Telah diperiksa: halaman login, 1.001 baris, peran terkunci, simpan/edit, penolakan simpan, serta tampilan mobile 390 px. Login akun produksi belum diuji karena email admin belum ditentukan.
+
+### Pembaruan kader — 27 September 2026
+
+- Tombol Edit/Hapus tersedia pada daftar anak dan hasil pencarian semua desa.
+  Kader hanya boleh menghapus anak di desa penugasannya. Konfirmasi menjelaskan
+  bahwa riwayat imunisasi, IDL, dan tindak lanjut ikut terhapus permanen.
+- Pilihan imunisasi mendukung beberapa jenis dalam satu kunjungan. Tanggal,
+  tempat, catatan, dan jadwal berikutnya berlaku untuk semua pilihan. Untuk batch
+  berbeda, tuliskan nama vaksin dan batch masing-masing pada kolom keterangan.
+  Input beberapa imunisasi memerlukan koneksi internet dan disimpan melalui satu
+  transaksi insert. Input satu imunisasi tetap mendukung antrean offline.
+- Login kader mengenali nama desa yang terdaftar, misalnya `mulya sari`,
+  `mulya_sari`, dan `kader_mulya_sari`. Kata sandi tidak diubah.
+- Terapkan migration `kader_child_delete_village_scope` untuk izin hapus kader.
+  Perubahan kebijakan ini sudah diterapkan pada proyek Supabase terkait.
+
+Verifikasi: `node --test tests/backend.test.cjs` (10 skenario) dan
+`node tests/browser.cjs` (memerlukan Playwright dan Chromium; bisa memakai
+`CHROMIUM_PATH`). Browser memakai data sintetis dan memeriksa edit/hapus kader,
+konfirmasi batal hapus, edit dari daftar semua desa, multi-select, kegagalan
+simpan, status belum divalidasi, serta layout HP. Uji transaksi database yang
+selalu di-rollback memastikan edit/hapus desa sendiri, penolakan hapus lintas
+desa, insert dua imunisasi dengan status belum diverifikasi, dan cascade hapus.
+Login password akun kader asli belum diuji; status aktif/konfirmasi dan bootstrap
+wilayah Mulya Sari berhasil diperiksa.
+
+Pemeriksaan advisor masih melaporkan temuan pada konfigurasi lama yang tidak
+berubah dalam patch ini, termasuk fungsi SECURITY DEFINER yang dapat dieksekusi
+anon, ekstensi pg_net di public, dan proteksi password bocor yang nonaktif.
+Lihat [panduan audit fungsi](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable),
+[panduan ekstensi](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public),
+dan [proteksi password](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).

@@ -42,8 +42,12 @@
   }
   const camel=k=>k.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
   const loginEmail=value=>{
-    const id=String(value||'').trim().toLowerCase();
-    return id.includes('@')?id:`${id}@${INTERNAL_LOGIN_DOMAIN}`;
+    let id=String(value||'').trim().toLowerCase();
+    if(id.includes('@'))return id;
+    id=id.replace(/\s+/g,'_');
+    const villages=['bangun_sari','banyu_urip','bunga_karang','kuala_puntian','manggar_raya','mulya_sari','purwosari','suka_damai','suka_tani','sumber_mekar_mukti','tanjung_lago','telang_sari'];
+    if(villages.includes(id))id='kader_'+id;
+    return `${id}@${INTERNAL_LOGIN_DOMAIN}`;
   };
 
   async function getAccess() {
@@ -152,10 +156,10 @@
     try{return await scopePromise}finally{scopePromise=null}
   }
 
-  async function loadChildHistory(state,childId) {
+  async function loadChildHistory(state,childId,{force=false}={}) {
     if(!childId)return [];
     const target=state||window.SIMIDS_INITIAL;
-    if(target?.fullEvents||target?.loadedChildHistories?.[childId]) return (target?.events||[]).filter(e=>e.childId===childId);
+    if(!force&&(target?.fullEvents||target?.loadedChildHistories?.[childId])) return (target?.events||[]).filter(e=>e.childId===childId);
     if(!access)await getAccess();
     const {data,error}=await client.from('simids_immunizations')
       .select('id,child_id,vaccine_code,immunization_date,input_date,service_place,next_due_date,batch_number,notes,validated,provider,source_import,created_at,updated_at')
@@ -240,6 +244,44 @@
     return data||{};
   }
 
+  function refreshEventSummary(state,childId) {
+    const child=state.children.find(c=>c.id===childId);if(!child)return;
+    const rows=state.events.filter(e=>e.childId===childId),sorted=[...rows].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    Object.assign(child,{immunizationCount:rows.length,lastVaccine:sorted[0]?.vaccineId||'',lastImmunizationDate:sorted[0]?.date||'',hasMr2:rows.some(e=>e.vaccineId==='MR2'),latestDueDate:sorted.find(e=>e.nextDueDate)?.nextDueDate||'',unvalidatedCount:rows.filter(e=>!e.validated).length});
+    state.unvalidatedCount=state.children.reduce((n,c)=>n+Number(c.unvalidatedCount||0),0);
+  }
+
+  async function saveImmunizations(state,rows) {
+    if(!navigator.onLine)throw new Error('Sambungkan internet untuk menyimpan beberapa imunisasi sekaligus. Pilihan belum dihapus.');
+    if(!rows.length||new Set(rows.map(r=>r.vaccineId)).size!==rows.length||rows.some(r=>r.childId!==rows[0].childId))throw new Error('Pilih jenis imunisasi berbeda untuk satu anak.');
+    if(state.events.some(e=>e.pendingSync))throw new Error('Tunggu sinkronisasi catatan offline selesai terlebih dahulu.');
+    await loadChildHistory(state,rows[0].childId,{force:true});
+    if(rows.some(r=>state.events.some(e=>e.childId===r.childId&&e.vaccineId===r.vaccineId&&e.date===r.date)))throw new Error('Ada imunisasi yang sudah tercatat pada tanggal ini. Hapus pilihan tersebut sebelum menyimpan.');
+    // One insert is one database transaction: either every vaccination is saved or none.
+    const {data,error}=await client.from(maps.events[0]).insert(rows.map(r=>pack('events',r))).select();
+    if(error)throw new Error(error.code==='23505'?'Imunisasi sudah tercatat. Muat ulang riwayat anak.':error.message);
+    state.events.push(...data.map(r=>unpack('events',r)));
+    refreshEventSummary(state,rows[0].childId);
+    baseline=structuredClone(state);
+  }
+
+  async function deleteChild(state,id) {
+    if(!navigator.onLine)throw new Error('Sambungkan internet sebelum menghapus data anak.');
+    const child=state.children.find(c=>c.id===id);
+    if(!child)throw new Error('Data anak tidak ditemukan.');
+    if(state.events.some(e=>e.childId===id&&e.pendingSync))throw new Error('Sinkronkan imunisasi anak ini terlebih dahulu.');
+    let query=client.from(maps.children[0]).delete().eq('id',id);
+    if(child.updatedAt)query=query.eq('updated_at',child.updatedAt);
+    const {data,error}=await query.select('id').single();
+    if(error||!data)throw new Error(error?.code==='PGRST116'?'Data berubah atau akses ditolak. Muat ulang dahulu.':error?.message||'Data tidak berhasil dihapus.');
+    state.children=state.children.filter(c=>c.id!==id);
+    state.events=state.events.filter(e=>e.childId!==id);
+    state.followups=state.followups.filter(e=>e.childId!==id);
+    delete state.loadedChildHistories?.[id];
+    state.unvalidatedCount=state.children.reduce((n,c)=>n+Number(c.unvalidatedCount||0),0);
+    baseline=structuredClone(state);
+  }
+
   async function save(state,action) {
     if(!navigator.onLine)throw new Error('Tidak ada koneksi. Data belum tersimpan; coba lagi setelah tersambung.');
     const key=actions[action];
@@ -274,7 +316,7 @@
     for(const key of ['simids_tanjung_lago_v6d','simids_tanjung_lago_v5','simids_tanjung_lago_v4','simids_tanjung_lago_v3','simids_tanjung_lago_v2'])localStorage.removeItem(key);
     const {data:{session}}=await client.auth.getSession();
     if(session) {try{return await load()}catch(e){await client.auth.signOut();}}
-    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email / Username<input type="text" id="loginEmail" autocomplete="username" placeholder="contoh: kader.tanjung1" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginStatus" aria-live="polite"></p><p id="loginError" role="alert"></p><small>Akun petugas internal tidak memerlukan konfirmasi email.</small></form></main>`;
+    document.body.innerHTML=`<main class="boot"><form id="loginForm" style="max-width:360px;width:100%;text-align:left"><b>Masuk SiMIDS</b><p>Gunakan akun petugas yang sudah diberi akses.</p><label>Email / Username<input type="text" id="loginEmail" autocomplete="username" placeholder="contoh: kader_mulya_sari" required></label><label>Kata sandi<input type="password" id="loginPassword" autocomplete="current-password" required></label><button id="loginSubmit">Masuk</button><p id="loginStatus" aria-live="polite"></p><p id="loginError" role="alert"></p><small>Kader dapat memakai username lengkap, misalnya kader_mulya_sari, atau nama desa: mulya sari.</small></form></main>`;
     const style=document.createElement('style');style.textContent='#loginForm input,#loginForm button{box-sizing:border-box;display:block;width:100%;padding:14px;margin:8px 0 20px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}#loginForm button{background:#087f73;color:white;cursor:pointer}#loginStatus{color:#64748b;min-height:1.2em}#loginError{color:#b91c1c}';document.head.appendChild(style);
     return new Promise(resolve=>document.getElementById('loginForm').addEventListener('submit',async e=>{
       e.preventDefault();const button=document.getElementById('loginSubmit');button.disabled=true;
@@ -290,7 +332,7 @@
 
   client.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'&&window.SIMIDS_READY)location.reload()});
   window.SimidsBackend={
-    login,load,loadScope,loadFullScope,loadChildHistory,loadChildrenPage,reportSummary,dashboardSummary,followupPage,save,adminUsers,
+    login,load,loadScope,loadFullScope,loadChildHistory,loadChildrenPage,reportSummary,dashboardSummary,followupPage,save,saveImmunizations,deleteChild,loginEmail,adminUsers,
     authRole:()=>access?.role||null,
     rollback:()=>{const copy=structuredClone(baseline);window.SIMIDS_INITIAL=copy;return copy},
     logout:async()=>{await client.auth.signOut();location.reload()}

@@ -2,14 +2,14 @@
 
             <details class="optional-box full"><summary>＋ Data tambahan <span>(boleh dikosongkan)</span></summary><div class="optional-grid">
               <div class="field"><label>Tanggal datang berikutnya</label><input id="eventNextDue" type="date" /><small class="field-help">Isi sesuai Buku KIA atau arahan bidan. Sistem tidak menebak jadwal medis.</small></div>
-              <div class="field"><label>No. batch / keterangan</label><input id="eventBatch" placeholder="Boleh kosong" /></div>
+              <div class="field"><label>No. batch / keterangan per vaksin</label><input id="eventBatch" placeholder="Contoh: BCG: A123; OPV-1: B456" /><small>Untuk beberapa vaksin, tuliskan nama vaksin beserta batch masing-masing.</small></div>
               <div class="field full"><label>Catatan</label><textarea id="eventNotes" rows="2" placeholder="Boleh kosong"></textarea></div>
             </div></details>
 
             <div class="full immunization-review" id="immunizationReview" aria-live="polite">
               <div class="review-empty"><span>✓</span><div><b>Periksa sebelum simpan</b><small>Pilih anak dan imunisasi. Ringkasannya akan muncul di sini.</small></div></div>
             </div>
-            <div class="full info-box compact-info" id="validationInfo">Data yang Ibu simpan akan <b>diperiksa oleh bidan</b>.</div>
+            <div class="full info-box compact-info">Beberapa imunisasi memakai tanggal, tempat, dan catatan yang sama. Penyimpanan sekaligus memerlukan internet.</div><div class="full info-box compact-info" id="validationInfo">Data yang Ibu simpan akan <b>diperiksa oleh bidan</b>.</div>
             <div class="form-actions full sticky-save"><button class="btn primary xl" id="saveImmunizationBtn" type="submit" disabled>✓ Simpan Imunisasi</button></div>
           </form>
         </div>

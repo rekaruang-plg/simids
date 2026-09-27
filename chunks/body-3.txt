@@ -53,10 +53,10 @@ iv id="followupReport" class="summary-panel"></div></div>
 
   <div class="modal picker-modal" id="vaccinePickerModal" aria-hidden="true">
     <div class="picker-sheet">
-      <div class="picker-sheet-head"><div><span class="section-kicker">PILIH IMUNISASI</span><h2>Imunisasi yang diberikan</h2><p>Pilih sesuai pelayanan yang dilakukan hari ini.</p></div><button class="close-btn" data-close-picker="vaccinePickerModal" aria-label="Tutup">×</button></div>
+      <div class="picker-sheet-head"><div><span class="section-kicker">PILIH IMUNISASI</span><h2>Imunisasi yang diberikan</h2><p>Pilih satu atau beberapa imunisasi yang diberikan. Tekan lagi untuk membatalkan pilihan.</p></div><button class="close-btn" data-close-picker="vaccinePickerModal" aria-label="Tutup">×</button></div>
       <div class="picker-search-wrap"><span>🔎</span><input id="vaccinePickerSearch" type="search" placeholder="Ketik MR, BCG, Polio…" autocomplete="off" inputmode="search" /></div>
       <div class="picker-tabs" role="group" aria-label="Filter imunisasi"><button class="picker-tab active" type="button" data-vaccine-filter="missing">Belum tercatat</button><button class="picker-tab" type="button" data-vaccine-filter="all">Semua imunisasi</button></div>
-      <div id="vaccinePickerResults" class="picker-results vaccine-results"></div>
+      <div id="vaccinePickerResults" class="picker-results vaccine-results"></div><div class="picker-sheet-footer"><button class="btn primary large" type="button" id="finishVaccineSelection">Selesai memilih</button></div>
     </div>
   </div>
 
