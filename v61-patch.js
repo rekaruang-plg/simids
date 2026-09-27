@@ -124,7 +124,7 @@
     const note=document.createElement('div');note.id='simidsRemoteChildrenNote';note.className='simids-remote-note';note.textContent=`Semua desa ditampilkan per ${remoteChildResult.pageSize} anak. Hanya halaman yang sedang dibuka yang diambil dari server.`;
     list.before(note);
     const rows=remoteChildResult.children||[];
-    list.innerHTML=rows.length?rows.map(c=>`<div class="record-card"><div class="record-main"><b>${escHtml(c.name)}</b><small>${escHtml(c.parentName||'-')} • ${escHtml(c.village||'-')} / ${escHtml(c.hamlet||'-')} • ${c.sex==='L'?'Laki-laki':'Perempuan'}</small><small class="simids-history-summary ${c.immunizationCount?'':'empty'}">${c.immunizationCount?`✓ ${c.immunizationCount} riwayat imunisasi • terakhir ${escHtml(vaccineLabel(c.lastVaccine))} (${fmtDate(c.lastImmunizationDate)})`:'Belum ada riwayat imunisasi tercatat'}</small></div><div class="record-actions"><button class="mini-btn" type="button" data-remote-history="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">Riwayat</button><button class="mini-btn primary" type="button" data-remote-immunize="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">💉 Imunisasi</button></div></div>`).join(''):'<div class="empty">Data anak tidak ditemukan.</div>';
+    list.innerHTML=rows.length?rows.map(c=>`<div class="record-card"><div class="record-main"><b>${escHtml(c.name)}</b><small>${escHtml(c.parentName||'-')} • ${escHtml(c.village||'-')} / ${escHtml(c.hamlet||'-')} • ${c.sex==='L'?'Laki-laki':'Perempuan'}</small><small class="simids-history-summary ${c.immunizationCount?'':'empty'}">${c.immunizationCount?`✓ ${c.immunizationCount} riwayat imunisasi • terakhir ${escHtml(vaccineLabel(c.lastVaccine))} (${fmtDate(c.lastImmunizationDate)})`:'Belum ada riwayat imunisasi tercatat'}</small></div><div class="record-actions"><button class="mini-btn" type="button" data-remote-history="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">Riwayat</button><button class="mini-btn primary" type="button" data-remote-immunize="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">💉 Imunisasi</button><button class="mini-btn" type="button" data-remote-edit="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">Edit</button>${['kader','puskesmas','admin'].includes(currentState().authRole||currentState().settings?.role)?`<button class="mini-btn danger" type="button" data-remote-delete="${escHtml(c.id)}" data-remote-village="${escHtml(c.village)}">Hapus</button>`:''}</div></div>`).join(''):'<div class="empty">Data anak tidak ditemukan.</div>';
     const pager=document.createElement('div');pager.id='simidsRemoteChildrenPager';pager.className='simids-pager';
     pager.innerHTML=`<button type="button" data-remote-child-page="prev" ${remoteChildResult.page<=1?'disabled':''}>‹ Sebelumnya</button><span>Halaman ${remoteChildResult.page} / ${remoteChildResult.pages} • ${remoteChildResult.total} anak</span><button type="button" data-remote-child-page="next" ${remoteChildResult.page>=remoteChildResult.pages?'disabled':''}>Berikutnya ›</button>`;
     list.after(pager);
@@ -151,6 +151,7 @@
       if(typeof window.indexEvents==='function')window.indexEvents();
       if(typeof window.renderAll==='function')window.renderAll();
       alignScopeFilters(village);refreshServicePlaces();updateScopeBadge();
+      if(mode==='edit'||mode==='delete'){window.showPage('children');document.querySelector(`[data-${mode==='edit'?'edit':'delete'}-child="${id}"]`)?.click();return}
       if(typeof window.showPage==='function')window.showPage('immunization');
       const select=document.getElementById('eventChild');if(select){select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}))}
       if(mode==='history')setTimeout(()=>document.getElementById('selectedChildPreview')?.scrollIntoView({behavior:'smooth',block:'center'}),40);
@@ -191,6 +192,8 @@
   document.addEventListener('click',e=>{
     const remotePage=e.target.closest('[data-remote-child-page]');
     if(remotePage){const next=remoteChildPage+(remotePage.dataset.remoteChildPage==='next'?1:-1);loadRemoteChildrenPage(next);document.getElementById('childrenCards')?.scrollIntoView({behavior:'smooth',block:'start'});return}
+    const remoteEdit=e.target.closest('[data-remote-edit]');if(remoteEdit){openRemoteChild(remoteEdit.dataset.remoteEdit,remoteEdit.dataset.remoteVillage,'edit');return}
+    const remoteDelete=e.target.closest('[data-remote-delete]');if(remoteDelete){openRemoteChild(remoteDelete.dataset.remoteDelete,remoteDelete.dataset.remoteVillage,'delete');return}
     const remoteHistory=e.target.closest('[data-remote-history]');if(remoteHistory){openRemoteChild(remoteHistory.dataset.remoteHistory,remoteHistory.dataset.remoteVillage,'history');return}
     const remoteImmunize=e.target.closest('[data-remote-immunize]');if(remoteImmunize){openRemoteChild(remoteImmunize.dataset.remoteImmunize,remoteImmunize.dataset.remoteVillage,'immunize');return}
     const b=e.target.closest('[data-child-page]');if(!b)return;

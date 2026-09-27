@@ -17,3 +17,7 @@
 .service-place-step .searchable-select-shell{width:100%}.service-place-step .searchable-select-button{min-height:58px;font-size:16px}
 .kohort-export-card{border:1px solid #a7f3d0;background:linear-gradient(180deg,#ffffff,#f0fdf4)}.source-column-summary{padding:12px 14px;border-radius:14px;background:#ecfdf5;color:#166534;line-height:1.55}
 @media(max-width:700px){.kohort-source-note,.fixed-area,.auto-field-note{padding:13px}.success-actions{display:grid;grid-template-columns:1fr}.success-actions .btn{width:100%}}
+
+/* Multi-vaccine picker: keep status chips inside each row on small screens. */
+.vaccine-results{grid-auto-rows:max-content;align-content:start;min-height:0}
+.vaccine-results .option-icon{font-size:.8rem}
